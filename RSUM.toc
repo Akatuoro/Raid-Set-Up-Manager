@@ -2,6 +2,8 @@
 ## Title: Dady's Raid Set Up Manager
 ## Notes: /raidsetup or /rsum
 ## Author: Dadybang
-## Version: 0.0.0.0.0.0.0.0.1
+## Version: 0.1
 
+RSUM_vgroups.lua
+RSUM_UI.lua
 RSUM.lua
