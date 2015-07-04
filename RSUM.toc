@@ -1,0 +1,7 @@
+## Interface: 60200
+## Title: Dady's Raid Set Up Manager
+## Notes: /raidsetup or /rsum
+## Author: Dadybang
+## Version: 0.0.0.0.0.0.0.0.1
+
+RSUM.lua
