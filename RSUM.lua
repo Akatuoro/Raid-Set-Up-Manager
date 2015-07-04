@@ -69,14 +69,6 @@ function RSUM_Debug_Init()
 	
 end
 
-function RSUM_Show()
-		windowframe:Show();
-end
-
-function RSUM_Hide()
-		windowframe:Hide();
-end
-
 function RSUM_Init()
 		if not initiated then
 			RSUM_Window_Init();

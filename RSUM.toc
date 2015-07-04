@@ -4,6 +4,7 @@
 ## Author: Dadybang
 ## Version: 0.1
 
+RSUM_core.lua
 RSUM_vgroups.lua
-RSUM_UI.lua
+RSUM_ui.lua
 RSUM.lua

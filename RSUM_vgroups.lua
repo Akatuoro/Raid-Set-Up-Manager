@@ -5,6 +5,8 @@ local vgroups_insync = true;
 -- virtual raid
 local vraidmembers = {};		-- vraidmembers[name] = {raidid, rank, class, role}
 local vgroupassignment = {};	-- vgroupassignment[subgroup] = {player1, player2, player3, player4, player5}  where playerx is a name
+local maxgroups = RSUM_MAXGROUPS;
+local maxmembers = RSUM_MAXMEMBERS;
 
 
 
@@ -64,21 +66,21 @@ function RSUM_UpdateVGroup()
 			local raidid = "raid" .. member;
 			local name, rank, subgroup, level, class, fileName, zone, online, isDead, raidrole, isML = GetRaidRosterInfo(member);
 			local role = UnitGroupRolesAssigned(raidid);
-			local frame_not_found = true;
-			for i=1,5,1 do
-				if frame_not_found and vgroupassignment[subgroup][i] == nil then
-					local frame = groupmemberframes[subgroup][i];
-					vraidmembers[name] = {["raidid"] = member, ["rank"] = rank, ["class"] = fileName, ["role"] = role, ["frame"] = frame};
-					vgroupassignment[subgroup][i] = name;
-					frame_not_found = false;
+			if name then
+				local frame_not_found = true;
+				for i=1,5,1 do
+					if frame_not_found and vgroupassignment[subgroup][i] == nil then
+						vraidmembers[name] = {["raidid"] = member, ["rank"] = rank, ["class"] = fileName, ["role"] = role};
+						vgroupassignment[subgroup][i] = name;
+						frame_not_found = false;
+					end
+				end
+				if frame_not_found then
+					print("RSUM Error, more than " .. maxmembers .. " players in group " .. subgroup .. " refresh please.");
 				end
 			end
-			if frame_not_found then
-				print("RSUM Error, more than " .. maxmembers .. " players in group " .. subgroup .. " refresh please.");
-			end
-			
 		end
-		vgroups_insync = true;
+		RSUM_GroupSync(true);
 		RSUM_UpdateWindows();
 end
 
@@ -118,7 +120,6 @@ function RSUM_GroupRosterUpdate()
 		for group=1,maxgroups,1 do
 			for member=1,maxmembers,1 do
 				if vgroupassignment[group][member] and vgroupassignment[group][member] == name then
-					print("left: " .. name);
 					RSUM_RemoveVMemberFromGroup(group, member);
 				end
 			end
@@ -130,15 +131,12 @@ function RSUM_GroupRosterUpdate()
 		local _, rank, subgroup, level, class, fileName, zone, online, isDead, raidrole, isML = GetRaidRosterInfo(member);
 		local raidid = "raid" .. member;
 		local role = UnitGroupRolesAssigned(raidid);
-		print("new: " .. name);
 		vraidmembers[name] = {["raidid"] = member, ["rank"] = rank, ["class"] = fileName, ["role"] = role, ["frame"] = frame};
 		-- find the first group from the rear to put the new group member into
 		for group=maxgroups,1,-1 do
 			if vgroupassignment[group][maxmembers] == nil then
-				print("group " .. group .. " empty");
 				for i=1,maxmembers,1 do
 					if vgroupassignment[group][i] == nil then
-						print("put " .. name .. " to group " .. group .. " memberframe " .. i);
 						vgroupassignment[group][i] = name;
 						break;
 					end
@@ -340,3 +338,20 @@ function RSUM_GetNumRaidMembersToMove()
 	return numraidmemberstomove, numraidmemberstomoveincombat;
 end
 
+function RSUM_GroupMember(group, member)
+	if vgroupassignment[group] and vgroupassignment[group][member] then
+		return vgroupassignment[group][member];
+	end
+	return nil;
+end
+
+function RSUM_GetMemberClass(name)
+	if name and vraidmembers[name] then
+		return vraidmembers[name]["class"];
+	end
+	return nil;
+end
+
+function RSUM_GroupSync(enable)
+	vgroups_insync = enable;
+end

@@ -1,3 +1,6 @@
+-- important variables
+local window_update = true;
+
 -- UI Element Pointers
 local number = 0;
 local mainframe;
@@ -5,9 +8,9 @@ local windowframe;
 local groupframes = {};
 local groupmemberframes = {};	-- groupmemberframes[group] = {player1frame, player2frame....}
 local groupmemberframesempty = {} -- groupmemberframes[framename] = true / nil
-local maxgroups = 8;
-local maxmembers = 5;
 local applyButtonMouseOver = false;
+local maxgroups = RSUM_MAXGROUPS;
+local maxmembers = RSUM_MAXMEMBERS;
 
 -- Drag Action
 local saved_frame = {["frame"] = nil, ["numpoints"] = 0, ["points"] = {}};		-- saved_frame["points"] = {point1, point2, ...} -- point1 = {"point", "relativeTo", "relativePoint", "xoff", "yoff"}
@@ -163,7 +166,7 @@ function RSUM_UpdateGroupMemberWindow(window, name)
 			name = "empty"
 			color = {["r"] = 0.8, ["g"] = 0.8, ["b"] = 0.8, ["a"] = 0.8};
 		else
-			color = RAID_CLASS_COLORS[vraidmembers[name]["class"]];
+			color = RAID_CLASS_COLORS[RSUM_GetMemberClass(name)];
 		end
 		
 		fontstring:SetTextColor(color.r, color.g, color.b, color.a);
@@ -172,10 +175,16 @@ function RSUM_UpdateGroupMemberWindow(window, name)
 end
 
 function RSUM_UpdateWindows()
+	window_update = true;
+end
+
+RSUM_OnWindowUpdate = function()
+	if window_update then
 		for group=1,maxgroups,1 do
 			for member = 1,maxmembers,1 do
-				if vgroupassignment[group] and vgroupassignment[group][member] then
-					RSUM_UpdateGroupMemberWindow(groupmemberframes[group][member], vgroupassignment[group][member])
+				local name = RSUM_GroupMember(group, member);
+				if name then
+					RSUM_UpdateGroupMemberWindow(groupmemberframes[group][member], name);
 					groupmemberframesempty[groupmemberframes[group][member]:GetName()] = nil;
 				else
 					RSUM_UpdateGroupMemberWindow(groupmemberframes[group][member], nil);
@@ -183,11 +192,14 @@ function RSUM_UpdateWindows()
 				end
 			end
 		end
+	end
+	window_update = false;
+
 end
 
 
 -- ---- Window Initiation ----
-local function RSUM_Window_Init()
+function RSUM_Window_Init()
 		-- Transform Player
 		--if PlayerHasToy(116400) then
 		--	UseToy(116400);
@@ -196,6 +208,7 @@ local function RSUM_Window_Init()
 		mainframe = CreateFrame("Frame", "rsummainframe", UIParent);
 		mainframe:RegisterEvent("GROUP_ROSTER_UPDATE");
 		mainframe:SetScript("OnEvent", RSUM_OnEvent);
+		mainframe:SetScript("OnUpdate", RSUM_OnWindowUpdate);
 		mainframe:Show();
 		
 		local texture = nil;
@@ -371,7 +384,7 @@ RSUM_OnDragStop = function(s, ...)
 	if targetgroup then
 		local sourcegroup, sourcemember = RSUM_GetGroupMemberByFrame(s)
 		if targetmember then
-			if vgroupassignment[targetgroup][targetmember] == nil then
+			if RSUM_GroupMember(targetgroup, targetmember) == nil then
 				RSUM_MoveVMember(sourcegroup, sourcemember, targetgroup);
 			else
 				RSUM_SwapVMember(sourcegroup, sourcemember, targetgroup, targetmember);
@@ -382,9 +395,9 @@ RSUM_OnDragStop = function(s, ...)
 		
 		local nummembers, _ = RSUM_GetNumRaidMembersToMove();
 		if nummembers > 0 then
-			vgroups_insync = false;
+			RSUM_GroupSync(false);
 		else
-			vgroups_insync = true;
+			RSUM_GroupSync(true);
 		end
 		RSUM_UpdateWindows();
 	end
@@ -397,4 +410,14 @@ RSUM_OnEvent = function(self, event, ...)
 	if event == "GROUP_ROSTER_UPDATE" then
 		RSUM_GroupRosterUpdate();
 	end
+end
+
+
+
+function RSUM_Show()
+		windowframe:Show();
+end
+
+function RSUM_Hide()
+		windowframe:Hide();
 end
