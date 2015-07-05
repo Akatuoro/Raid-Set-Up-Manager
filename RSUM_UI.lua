@@ -242,7 +242,7 @@ function RSUM_Window_Init()
 		button:SetPoint("TOPRIGHT", button:GetParent(), "BOTTOMLEFT", gw_padding+button_width, gw_padding+button_height);
 		--button:SetNormalTexture(buttontexture);
 		--button:SetHighlightTexture(buttontexturehighlighted);
-		button:SetText("Undo Changes");
+		button:SetText("Undo Changes / Reload");
 		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
