@@ -69,6 +69,28 @@ function RSUM_Debug_Init()
 	
 end
 
+local function RSUM_SetBindings()
+	-- Create invisible button
+	local showwindow_button = CreateFrame("Button", "rsumshowwindowbutton", mainframe);
+	showwindow_button:SetScript("OnClick", RSUM_ShowWindowButtonOnClick);
+	
+	-- set binding to click button
+	ok = SetBindingClick("CTRL-O", showwindow_button:GetName());
+	if not ok then
+		print("RSUM Error when setting key bindings");
+	end
+	print("Bindings set");
+end
+
+RSUM_ShowWindowButtonOnClick = function(s, ...)
+	if not initiated then
+		RSUM_Init();
+		return;
+	end
+	RSUM_Toggle();
+end
+
+
 function RSUM_Init()
 		if not initiated then
 			RSUM_Window_Init();
@@ -80,3 +102,7 @@ function RSUM_Init()
 			print("RSUM is already initiated");
 		end
 end
+
+-- do code that needs to be done
+
+RSUM_SetBindings();
