@@ -211,6 +211,8 @@ function RSUM_Window_Init()
 		mainframe:SetScript("OnUpdate", RSUM_OnWindowUpdate);
 		mainframe:Show();
 		
+		local showwindow_button = CreateFrame("Button", "rsumshowwindowbutton", mainframe);
+		
 		local texture = nil;
 		local font = "Fonts\\FRIZQT__.TTF", 12, "";
 		local fontstring = nil;
@@ -338,6 +340,13 @@ function RSUM_Window_Init()
 		
 end
 
+
+RSUM_OnKeyDown = function(s, key)
+	if key == "Ö" then
+		RSUM_Show();
+	end
+end
+
 RSUM_ApplyButtonOnUpdate = function(s)
 	if applyButtonMouseOver then
 		local tomove, incombat = RSUM_GetNumRaidMembersToMove();
@@ -369,7 +378,9 @@ RSUM_OnDragStart = function(s, ...)
 end
 
 RSUM_OnDragStop = function(s, ...)
-	if RSUM_GroupMemberFrameEmpty(s) == true then
+	if RSUM_GroupMemberFrameEmpty(s) then
+		s:StopMovingOrSizing();
+		RSUM_ReturnSavedFramePosition();
 		return;
 	end
 	s:StopMovingOrSizing();
