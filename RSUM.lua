@@ -1,7 +1,7 @@
 -- important variables
 local initiated = false;
 local RSUM_test = false;
-
+local onload_frame = CreateFrame("Frame", "rsumonload", UIParent);
 -- Debugging
 local debugframe;
 local debugfontstring;
@@ -42,6 +42,14 @@ local function slashhandler(msg, editbox)
 			RSUM_BuildGroups();
 			return;
 		end
+		if msg == "options" then
+			if not initiated then
+				RSUM_Init();
+			end
+			RSUM_Show();
+			RSUM_OptionsWindow();
+			return;
+		end
 		if not initiated then
 			RSUM_Init();
 		end
@@ -69,17 +77,58 @@ function RSUM_Debug_Init()
 	
 end
 
+function RSUM_SetBinding(binding, target)
+	local setbinding = false;
+	if GetBindingByKey(binding) == "" or GetBindingByKey(binding) == nil then
+		setbinding = true;
+	else
+		local key, list = GetBindingKey(GetBindingByKey(binding));
+		if key == binding then
+			setbinding = false;
+		else
+			setbinding = true;
+		end
+	end
+	
+	if setbinding then
+		if target and target == "togglewindow" then
+			ok = SetBindingClick(binding, "rsumshowwindowbutton");
+			if not ok then
+				print("RSUM: Binding could not be set");
+				return false;
+			end
+			-- clear old binding
+			local key, otherkey = GetBindingKey(GetBindingByKey(binding));
+			if not (key == binding) then
+				SetBinding(key);
+				print("key");
+			end
+			if not (otherkey == binding) then
+				SetBinding(otherkey);
+				print("otherkey");
+			end
+		end
+	else
+		print("RSUM: Binding already in use");
+		return false;
+	end
+	return true;
+end
+
 local function RSUM_SetBindings()
 	-- Create invisible button
 	local showwindow_button = CreateFrame("Button", "rsumshowwindowbutton", mainframe);
 	showwindow_button:SetScript("OnClick", RSUM_ShowWindowButtonOnClick);
 	
 	-- set binding to click button
-	ok = SetBindingClick("CTRL-O", showwindow_button:GetName());
+	if RSUM_Options and RSUM_Options["keybind_togglewindow"] then
+		ok = SetBindingClick(RSUM_Options["keybind_togglewindow"], showwindow_button:GetName());
+	else
+		ok = SetBindingClick("CTRL-O", showwindow_button:GetName());
+	end
 	if not ok then
 		print("RSUM Error when setting key bindings");
 	end
-	print("Bindings set");
 end
 
 RSUM_ShowWindowButtonOnClick = function(s, ...)
@@ -104,5 +153,5 @@ function RSUM_Init()
 end
 
 -- do code that needs to be done
-
-RSUM_SetBindings();
+onload_frame:RegisterEvent("ADDON_LOADED");
+onload_frame:SetScript("OnEvent", function(s, eventname, arg) if eventname == "ADDON_LOADED" and arg == "RSUM" then RSUM_SetBindings(); end end);

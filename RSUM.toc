@@ -4,6 +4,8 @@
 ## Author: Dadybang
 ## Version: 0.1
 
+## SavedVariables: RSUM_Options, RSUM_DB
+
 RSUM_core.lua
 RSUM_vgroups.lua
 RSUM_ui.lua

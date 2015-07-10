@@ -12,6 +12,15 @@ local applyButtonMouseOver = false;
 local maxgroups = RSUM_MAXGROUPS;
 local maxmembers = RSUM_MAXMEMBERS;
 
+-- Options UI Element Pointers
+local optionsframe = false;
+
+-- savenload UI Element Pointers
+local savenloadframe = false;
+
+-- side frame table
+local sideframetable = {["Options"] = optionsframe, ["SaveNLoad"] = savenloadframe};
+
 -- Drag Action
 local saved_frame = {["frame"] = nil, ["numpoints"] = 0, ["points"] = {}};		-- saved_frame["points"] = {point1, point2, ...} -- point1 = {"point", "relativeTo", "relativePoint", "xoff", "yoff"}
 
@@ -32,6 +41,13 @@ local exitbutton_height = 24;
 local exitbutton_width = 24;
 local exitbutton_offx = 4;
 local exitbutton_offy = 4;
+local symbolbutton_height = 30;
+local symbolbutton_width = 30;
+
+local options_height = 400;
+local options_width = 300;
+local sidewindow_offx = 0;
+local sidewindow_offy = -40;
 
 -- visuals (aka textures, maybe fonts):
 local mainwindowframetexture = 0,0,0,0.7;
@@ -41,6 +57,8 @@ local buttontexturehighlighted = 0.4,0.4,0,1;
 local groupframetexture = 0,0,0.4,1;
 local groupmemberframetexture = 0.1,0.1,0.1,1;
 local groupmemberframetexturehighlighted = 0.4,0.4,0.4,1;
+local savenloadsymboltexture = 0.1,0.4,0.5,1;
+local optionssymboltexture = 0.1,0.1,0.1,1;
 
 -- descriptions
 local titleregiontext = "Raid Set Up Manager";
@@ -217,13 +235,42 @@ function RSUM_Window_Init()
 		local button = nil;
 		windowframe = CreateFrame("Frame", "rsummainwindow", UIParent);
 		windowframe:SetWidth(gw_padding * 3 + gw_width * 2);
-		windowframe:SetHeight(gw_padding * 5 + gw_height * 4 + button_height + gw_padding);
+		windowframe:SetHeight(gw_padding * 5 + gw_height * 4 + button_height + gw_padding + symbolbutton_height + gw_padding);
 		windowframe:SetPoint("CENTER", 0, 0);
 		windowframe:SetFrameStrata("FULLSCREEN");
 		windowframe:SetMovable(true);
 		texture = windowframe:CreateTexture("rsummainwindowtexture");
 		texture:SetAllPoints(texture:GetParent());
 		texture:SetTexture(mainwindowframetexture);
+		
+		-- symbol button line:
+		button = CreateFrame("Button", "rsumoptionssymbolbutton", windowframe);
+		button:SetSize(symbolbutton_width, symbolbutton_height);
+		button:SetPoint("TOPRIGHT", -gw_padding, -gw_padding);
+		button:EnableMouse(true);
+		button:Enable();
+		button:RegisterForClicks("LeftButtonUp");
+		button:SetScript("OnClick", function(s) RSUM_SideWindow("Options"); end);
+		button:Show();
+		
+		texture = button:CreateTexture("rsumoptionssymbolbuttontexture");
+		texture:SetAllPoints(texture:GetParent());
+		texture:SetTexture(optionssymboltexture);
+		
+		
+		button = CreateFrame("Button", "rsumsavenloadsymbolbutton", windowframe);
+		button:SetSize(symbolbutton_width, symbolbutton_height);
+		button:SetPoint("TOPRIGHT", -gw_padding * 2 - symbolbutton_width, -gw_padding);
+		button:EnableMouse(true);
+		button:Enable();
+		button:RegisterForClicks("LeftButtonUp");
+		button:SetScript("OnClick", function(s) RSUM_SideWindow("SaveNLoad"); end);
+		button:Show();
+		
+		texture = button:CreateTexture("rsumsavenloadsymbolbuttontexture");
+		texture:SetAllPoints(texture:GetParent());
+		texture:SetTexture(savenloadsymboltexture);
+		
 		
 		-- buttons:
 		button = CreateFrame("Button", "rsumexitbutton", windowframe, "UIPanelCloseButton");
@@ -294,7 +341,7 @@ function RSUM_Window_Init()
 			groupframes[group] = CreateFrame("Frame","rsumgroupwindow" .. group, windowframe)
 			groupframes[group]:SetWidth(gw_width);
 			groupframes[group]:SetHeight(gw_height);
-			local y = gw_padding + floor((group-1) / 2) * (gw_height + gw_padding);
+			local y = symbolbutton_height + 2 * gw_padding + floor((group-1) / 2) * (gw_height + gw_padding);
 			local x;
 			if floor((group-1) / 2) == (group-1) / 2 then
 				x = gw_padding;
@@ -338,6 +385,163 @@ function RSUM_Window_Init()
 		
 end
 
+function RSUM_OptionsWindow()
+	if optionsframe == nil or optionsframe == false then
+		RSUM_OptionsWindowInit();
+		return;
+	end
+	if optionsframe:IsShown() then
+		optionsframe:Hide();
+	else
+		optionsframe:Show();
+	end
+end
+
+
+function RSUM_OptionsWindowInit()
+	if optionsframe == nil or optionsframe == false then
+		if windowframe then
+			optionsframe = CreateFrame("Frame", "rsumoptionswindow", windowframe);
+			optionsframe:SetPoint("TOPLEFT", windowframe, "TOPRIGHT", sidewindow_offx, sidewindow_offy);
+			optionsframe:SetSize(button_width + gw_padding * 2, 200);
+			local texture = optionsframe:CreateTexture();
+			texture:SetTexture(mainwindowframetexture);
+			texture:SetAllPoints(texture:GetParent());
+			
+			local fontstring = optionsframe:CreateFontString("rsumoptionsheader");
+			fontstring:SetPoint("TOP", 0, -gw_padding);
+			fontstring:SetSize(button_width, button_height);
+			if not fontstring:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
+				print("Font not valid");
+			end
+			fontstring:SetText("Options");
+			
+			
+			local optionfontstring_keybind = optionsframe:CreateFontString("rsumoptionfontstring_keybind");
+			optionfontstring_keybind:SetPoint("TOP", fontstring, "BOTTOM", 0, -gw_padding);
+			optionfontstring_keybind:SetSize(button_width, button_height);
+			if not optionfontstring_keybind:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
+				print("Font not valid");
+			end
+			optionfontstring_keybind:SetText("Keybind for /rsum");
+			
+			
+			local optionbutton_keybind = CreateFrame("Button", "rsumoptionbutton_keybind", optionsframe, "UIPanelButtonTemplate");
+			optionbutton_keybind:SetPoint("TOP", optionfontstring_keybind, "BOTTOM", 0, -gw_padding);
+			optionbutton_keybind:SetSize(button_width, button_height);
+			if RSUM_Options and RSUM_Options["keybind_togglewindow"] then
+				optionbutton_keybind:SetText(RSUM_Options["keybind_togglewindow"]);
+			else
+				optionbutton_keybind:SetText("CTRL+O");
+			end
+			optionbutton_keybind:EnableMouse();
+			optionbutton_keybind:Enable();
+			optionbutton_keybind:SetScript("OnClick", RSUM_OptionButton_Keybind_OnClick);
+			optionbutton_keybind:SetScript("OnKeyUp", RSUM_OptionButton_Keybind_OnKeyUp);
+			optionbutton_keybind:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:SetText("Click to change"); end);
+			optionbutton_keybind:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+			optionbutton_keybind:EnableKeyboard(false);
+		end
+	end
+end
+
+function RSUM_SaveNLoadWindowInit()
+	if savenloadframe == nil or savenloadframe == false then
+		if windowframe then
+			savenloadframe = CreateFrame("Frame", "rsumsavenloadwindow", windowframe);
+			savenloadframe:SetPoint("TOPLEFT", windowframe, "TOPRIGHT", sidewindow_offx, sidewindow_offy);
+			savenloadframe:SetSize(button_width + gw_padding * 2, 200);
+			local texture = savenloadframe:CreateTexture();
+			texture:SetTexture(mainwindowframetexture);
+			texture:SetAllPoints(texture:GetParent());
+			
+			local fontstring = savenloadframe:CreateFontString("rsumsavenloadheader");
+			fontstring:SetPoint("TOP", 0, -gw_padding);
+			fontstring:SetSize(button_width, button_height);
+			if not fontstring:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
+				print("Font not valid");
+			end
+			fontstring:SetText("Under Construction");
+			
+		end
+	end
+end
+
+function RSUM_SideWindowInit(name)
+	if name == "Options" then
+		RSUM_OptionsWindowInit();
+		sideframetable[name] = optionsframe;
+		return true;
+	end
+	if name == "SaveNLoad" then 
+		RSUM_SaveNLoadWindowInit();
+		sideframetable[name] = savenloadframe;
+		return true;
+	end
+end
+
+function RSUM_SideWindow(name)
+	if name == nil then
+		for k, v in pairs(sideframetable) do
+			if v then
+				v:Hide();
+			end
+		end
+	end
+	
+	if not sideframetable[name] then
+		if not RSUM_SideWindowInit(name) then
+			return;
+		end
+	else
+		if sideframetable[name]:IsShown() then
+			sideframetable[name]:Hide();
+		else
+			sideframetable[name]:Show();
+		end
+	end
+	
+	for k, v in pairs(sideframetable) do
+		if v and not (k == name) then
+			v:Hide();
+		end
+	end
+end
+
+
+RSUM_OptionButton_Keybind_OnClick = function(s, ...)
+	if s:IsKeyboardEnabled() then
+		s:EnableKeyboard(false);
+		return;
+	end
+	
+	s:EnableKeyboard(true);
+end
+
+RSUM_OptionButton_Keybind_OnKeyUp = function(s, key)
+	if key == "ESC" then
+		s:EnableKeyboard(false);
+		return;
+	end
+	
+	local binding = key;
+	if IsControlKeyDown() then
+		binding = "CTRL-" .. binding;
+	end
+	if IsAltKeyDown() then
+		binding = "ALT-" .. binding;
+	end
+	if IsShiftKeyDown() then
+		binding = "SHIFT-" .. binding;
+	end
+	
+	if RSUM_SetBinding(binding, "togglewindow") then
+		s:SetText(binding);
+		RSUM_Options["keybind_togglewindow"] = binding;
+	end
+	
+	s:EnableKeyboard(false);
+end
 
 RSUM_ApplyButtonOnUpdate = function(s)
 	if applyButtonMouseOver then
