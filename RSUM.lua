@@ -1,6 +1,6 @@
 -- important variables
+local bindings_initiated = false;
 local initiated = false;
-local RSUM_test = false;
 local onload_frame = CreateFrame("Frame", "rsumonload", UIParent);
 -- Debugging
 local debugframe;
@@ -28,13 +28,9 @@ local function slashhandler(msg, editbox)
 			return;
 		end
 		if msg == "test" then
-			if RSUM_test then
-				RSUM_test = false;
-			else
-				RSUM_test = true;
-				if not initiated then
-					RSUM_Init();
-				end
+			RSUM_Test();
+			if not initiated then
+				RSUM_Init();
 			end
 			return;
 		end
@@ -100,12 +96,14 @@ function RSUM_SetBinding(binding, target)
 			-- clear old binding
 			local key, otherkey = GetBindingKey(GetBindingByKey(binding));
 			if not (key == binding) then
-				SetBinding(key);
-				print("key");
+				if key then
+					SetBinding(key);
+				end
 			end
 			if not (otherkey == binding) then
-				SetBinding(otherkey);
-				print("otherkey");
+				if otherkey then
+					SetBinding(otherkey);
+				end
 			end
 		end
 	else
@@ -128,7 +126,10 @@ local function RSUM_SetBindings()
 	end
 	if not ok then
 		print("RSUM Error when setting key bindings");
+		return;
 	end
+	
+	bindings_initiated = true;
 end
 
 RSUM_ShowWindowButtonOnClick = function(s, ...)
@@ -153,5 +154,5 @@ function RSUM_Init()
 end
 
 -- do code that needs to be done
-onload_frame:RegisterEvent("ADDON_LOADED");
-onload_frame:SetScript("OnEvent", function(s, eventname, arg) if eventname == "ADDON_LOADED" and arg == "RSUM" then RSUM_SetBindings(); end end);
+onload_frame:RegisterEvent("PLAYER_ENTERING_WORLD");
+onload_frame:SetScript("OnEvent", function(s, eventname, ...) if not bindings_initiated and eventname == "PLAYER_ENTERING_WORLD" then RSUM_SetBindings(); end end);

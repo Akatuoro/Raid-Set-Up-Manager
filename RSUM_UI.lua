@@ -17,6 +17,8 @@ local optionsframe = false;
 
 -- savenload UI Element Pointers
 local savenloadframe = false;
+local savenloadmenutable = {};
+local savenloaddropdownmenu = nil;
 
 -- side frame table
 local sideframetable = {["Options"] = optionsframe, ["SaveNLoad"] = savenloadframe};
@@ -57,7 +59,8 @@ local buttontexturehighlighted = 0.4,0.4,0,1;
 local groupframetexture = 0,0,0.4,1;
 local groupmemberframetexture = 0.1,0.1,0.1,1;
 local groupmemberframetexturehighlighted = 0.4,0.4,0.4,1;
-local savenloadsymboltexture = 0.1,0.4,0.5,1;
+--local savenloadsymboltexture = 0.1,0.4,0.5,1;
+local savenloadsymboltexture = "Media/button_speichern.png";
 local optionssymboltexture = 0.1,0.1,0.1,1;
 
 -- descriptions
@@ -445,6 +448,40 @@ function RSUM_OptionsWindowInit()
 	end
 end
 
+RSUM_SaveNLoadCreatePopUp = function(s)
+	
+end
+
+RSUM_SaveNLoadDeletePopUp = function(s)
+
+end
+
+RSUM_SaveNLoadChangeNamePopUp = function(s)
+
+end
+
+RSUM_SaveNLoadSave = function(s)
+
+end
+
+function RSUM_SaveNLoadDropDown_Menu(frame, level, menuList)
+	local info = UIDropDownMenu_CreateInfo()
+	
+	if level == 1 then
+		local names = RSUM_GetSavedRaidNames();
+		if names then
+			for k, v in ipairs(names) do
+				info.text, info.arg1, info.func = v, v, function(s, arg1, arg2, checked) RSUM_LoadSavedRaid(s, arg1, arg2, checked); UIDropDownMenu_SetText(savenloaddropdownmenu, arg1); end;
+				UIDropDownMenu_AddButton(info);
+			end
+		end
+	end
+	local text = UIDropDownMenu_GetText(savenloaddropdownmenu);
+	if text then
+		UIDropDownMenu_SetSelectedName(savenloaddropdownmenu, text);
+	end
+end
+
 function RSUM_SaveNLoadWindowInit()
 	if savenloadframe == nil or savenloadframe == false then
 		if windowframe then
@@ -456,12 +493,43 @@ function RSUM_SaveNLoadWindowInit()
 			texture:SetAllPoints(texture:GetParent());
 			
 			local fontstring = savenloadframe:CreateFontString("rsumsavenloadheader");
-			fontstring:SetPoint("TOP", 0, -gw_padding);
+			fontstring:SetPoint("TOP", 0, -gw_padding - 50);
 			fontstring:SetSize(button_width, button_height);
 			if not fontstring:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
 				print("Font not valid");
 			end
 			fontstring:SetText("Under Construction");
+			
+			local width = savenloadframe:GetWidth() - 3 * button_height - 2 * mw_padding - 3 * gw_padding;
+			savenloaddropdownmenu = CreateFrame("Frame", "rsumsavenloaddropdown", savenloadframe, "UIDropDownMenuTemplate");
+			savenloaddropdownmenu:SetPoint("CENTER", savenloadframe, "TOPLEFT", gw_padding + width / 2, -gw_padding - button_height / 2 - 2);
+			savenloaddropdownmenu:SetHeight(button_height);
+			UIDropDownMenu_SetWidth(savenloaddropdownmenu, width);
+			UIDropDownMenu_Initialize(savenloaddropdownmenu, RSUM_SaveNLoadDropDown_Menu);
+			
+			local button = CreateFrame("Button", "rsumsavenloadcreatebutton", savenloadframe, "UIGoldBorderButtonTemplate");
+			button:SetSize(button_height, button_height);
+			button:SetText("+");
+			button:SetPoint("CENTER", savenloadframe, "TOPRIGHT", -button_height / 2 -gw_padding - mw_padding * 2 - button_height * 2, -button_height / 2 -gw_padding);
+			button:SetScript("OnClick", RSUM_SaveNLoadCreatePopUp);
+			
+			local button = CreateFrame("Button", "rsumsavenloaddeletebutton", savenloadframe, "UIGoldBorderButtonTemplate");
+			button:SetSize(button_height, button_height);
+			button:SetText("-");
+			button:SetPoint("CENTER", savenloadframe, "TOPRIGHT", -button_height / 2 -gw_padding - mw_padding - button_height, -button_height / 2 -gw_padding);
+			button:SetScript("OnClick", RSUM_SaveNLoadDeletePopUp);
+			
+			local button = CreateFrame("Button", "rsumsavenloadchangenamebutton", savenloadframe, "UIGoldBorderButtonTemplate");
+			button:SetSize(button_height, button_height);
+			button:SetText("*");
+			button:SetPoint("CENTER", savenloadframe, "TOPRIGHT", -button_height / 2 -gw_padding, -button_height / 2 -gw_padding);
+			button:SetScript("OnClick", RSUM_SaveNLoadChangeNamePopUp);
+			
+			local button = CreateFrame("Button", "rsumsavenloadsavebutton", savenloadframe, "UIPanelButtonTemplate");
+			button:SetPoint("BOTTOM", 0, gw_padding);
+			button:SetSize(savenloadframe:GetWidth() - gw_padding * 2, button_height);
+			button:SetText("Save");
+			button:SetScript("OnClick", RSUM_SaveNLoadSave);
 			
 		end
 	end
@@ -507,7 +575,6 @@ function RSUM_SideWindow(name)
 		end
 	end
 end
-
 
 RSUM_OptionButton_Keybind_OnClick = function(s, ...)
 	if s:IsKeyboardEnabled() then
