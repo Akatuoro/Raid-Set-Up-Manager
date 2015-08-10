@@ -13,12 +13,34 @@ local vgroupassignment = {};	-- vgroupassignment[subgroup] = {player1, player2, 
 local maxgroups = RSUM_MAXGROUPS;
 local maxmembers = RSUM_MAXMEMBERS;
 
+local groupassignmentcopy = nil;
+
 
 -- saving and loading groups
 -- RSUM_DB["Members"] contains info for vraidmembers
 -- RSUM_DB["Raids"][name] equivalent to vgroupassignment for raid identified by name
 
 local savedraidnames = nil;
+
+function RSUM_VirtualMode()
+	if modus == "standard" then
+		RSUM_CopyGroup(vgroupassignment, groupassignmentcopy);
+		RSUM_UpdateWindows();
+	end
+	modus = "ultravirtual";
+	RSUM_SetVirtualTexture();
+end
+
+function RSUM_StandardMode()
+	if not (modus == "standard") and groupassignmentcopy then
+		RSUM_CopyGroup(groupassignmentcopy, vgroupassignment);
+		groupassignmentcopy = nil;
+		RSUM_UpdateWindows();
+	end
+	modus = "standard";
+	RSUM_GroupRosterUpdate();
+	RSUM_SetStandardTexture();
+end
 
 function RSUM_Test()
 	if modus == "testing" then
@@ -39,6 +61,46 @@ local function RSUM_VGroupInit()
 			vraidmembers[name] = nil;
 		end
 end
+
+local function RSUM_GroupByName(name)
+	if name then
+		if vgroupassignment then
+			for group=1,maxgroups,1 do
+				if vgroupassignment[group] then
+					for member=1,maxmembers,1 do
+						if vgroupassignment[group][member] == name then
+							return group, member;
+						end
+					end
+				end
+			end
+		end
+	end
+	return nil,nil;
+end
+
+local function RSUM_FindSpotForMember(rear)
+	-- searches a free sport for the member. if rear is true then search from the rear
+	local start, finish, step;
+	if rear then
+		start = maxgroups;
+		finish = 1;
+		step = -1;
+	else
+		start = 1;
+		finish = maxgroups;
+		step = 1;
+	end
+	
+	for group=start,finish,step do
+		if vgroupassignment[group] then
+			if not vgroupassignment[group][maxmembers] then
+				return group;
+			end
+		end
+	end
+end
+
 
 -- set virtual groups based on the real ones
 function RSUM_UpdateVGroup()
@@ -86,7 +148,7 @@ function RSUM_UpdateVGroup()
 				local frame_not_found = true;
 				for i=1,5,1 do
 					if frame_not_found and vgroupassignment[subgroup][i] == nil then
-						vraidmembers[name] = {["raidid"] = member, ["rank"] = rank, ["class"] = fileName, ["role"] = role};
+						vraidmembers[name] = {["raidid"] = member, ["rank"] = rank, ["class"] = fileName, ["role"] = role, ["real"] = true};
 						vgroupassignment[subgroup][i] = name;
 						frame_not_found = false;
 					end
@@ -150,7 +212,7 @@ function RSUM_GroupRosterUpdate()
 		local _, rank, subgroup, level, class, fileName, zone, online, isDead, raidrole, isML = GetRaidRosterInfo(member);
 		local raidid = "raid" .. member;
 		local role = UnitGroupRolesAssigned(raidid);
-		vraidmembers[name] = {["raidid"] = member, ["rank"] = rank, ["class"] = fileName, ["role"] = role, ["frame"] = frame};
+		vraidmembers[name] = {["raidid"] = member, ["rank"] = rank, ["class"] = fileName, ["role"] = role, ["frame"] = frame, ["real"] = true};
 		-- find the first group from the rear to put the new group member into
 		for group=maxgroups,1,-1 do
 			if vgroupassignment[group][maxmembers] == nil then
@@ -277,6 +339,7 @@ function RSUM_BuildGroups()
 			end
 		end
 	end
+	groupassignmentcopy = nil;
 end
 
 -- add virtual member to virtual group. fails if group full
@@ -350,7 +413,7 @@ function RSUM_GetNumRaidMembersToMove()
 	for group=1,maxgroups,1 do
 		for member=1,maxmembers,1 do
 			local name = vgroupassignment[group][member]
-			if name then
+			if name and vraidmembers[name] and vraidmembers[name]["raidid"] then
 				vsubgroup[vraidmembers[name]["raidid"]] = group;
 			end
 		end
@@ -388,11 +451,49 @@ function RSUM_GetMemberClass(name)
 	return nil;
 end
 
+function RSUM_ChangeMemberClass(group, member, class)
+	if group and member then
+		if vgroupassignment[group] and vgroupassignment[group][member] then
+			local name = vgroupassignment[group][member];
+			if not vraidmembers[name] then
+				vraidmembers[name] = {};
+			end
+			vraidmembers[name].class = class;
+			RSUM_UpdateWindows();
+		end
+	end
+end
+
+function RSUM_CreateMember(name, class)
+	if name then
+		if RSUM_GroupByName(name) then
+			return;
+		end
+		
+		RSUM_VirtualMode();
+	
+		vraidmembers[name] = {};
+		if class then
+			vraidmembers[name].class = class;
+		end
+		
+		-- put new member into a group
+		local group = RSUM_FindSpotForMember();
+		if group then
+			RSUM_AddVMemberToGroup(name, group);
+		end
+	end
+	RSUM_UpdateWindows();
+end
+
 function RSUM_GroupSync(enable)
 	vgroups_insync = enable;
 end
 
-local function RSUM_CopyGroup(source, target)
+function RSUM_CopyGroup(source, target)
+	if not source or not target then
+		return;
+	end
 	for group=1,maxgroups,1 do
 		target[group] = {};
 		for member=1,maxmembers,1 do
@@ -404,6 +505,7 @@ end
 local function RSUM_InitSavedRaids()
 	if savedraidnames == nil then
 		if RSUM_DB == nil or RSUM_DB["Raids"] == nil then
+			savedraidnames = {};
 			return;
 		end
 		
@@ -411,7 +513,46 @@ local function RSUM_InitSavedRaids()
 			if savedraidnames == nil then
 				savedraidnames = {};
 			end
-			savedraidnames.insert(name);
+			table.insert(savedraidnames, name);
+		end
+	end
+end
+
+function RSUM_SyncMemberSpecs()
+	if vraidmembers then
+		if not RSUM_DB["Members"] then
+			RSUM_DB["Members"] = {};
+		end
+		for k, v in pairs(vraidmembers) do
+			if v.real then
+				RSUM_DB["Members"][k] = v;
+			else
+				if RSUM_DB["Members"][k] and RSUM_DB["Members"][k].real then
+					vraidmembers[k] = RSUM_DB["Members"][k];
+				else
+					RSUM_DB["Members"][k] = v;
+				end
+			end
+		end
+	end
+	if not vraidmembers then
+		vraidmembers = {};
+	end
+	if RSUM_DB["Members"] then
+		for group=1,maxgroups,1 do
+			if vgroupassignment[group] then
+				for member=1,maxmembers,1 do
+					local name = vgroupassignment[group][member];
+					if name then
+						local v = vraidmembers[name];
+						if not v or not v.class then
+							if RSUM_DB["Members"][name] then
+								vraidmembers[name] = RSUM_DB["Members"][name];
+							end
+						end
+					end
+				end
+			end
 		end
 	end
 end
@@ -425,44 +566,100 @@ function RSUM_GetSavedRaidNames()
 	return savedraidnames;
 end
 
-function RSUM_LoadSavedRaid(s, name, arg2, checked)
+function RSUM_LoadSavedRaid(name)
 	if modus == "testing" then
 		RSUM_UpdateVGroup();
 		return;
 	end
 	if RSUM_DB["Raids"] then
 		if RSUM_DB["Raids"][name] then
+			RSUM_VirtualMode();
 			RSUM_CopyGroup(RSUM_DB["Raids"][name], vgroupassignment);
 		end
 	end
+	RSUM_SyncMemberSpecs();
+	RSUM_UpdateWindows();
 	return {};
 end
 
 function RSUM_UpdateSavedRaid(name)
+	if modus == "testing" then
+		print("Would save: ");
+		print(name);
+		return;
+	end
+	if not name then
+		return;
+	end
 	if RSUM_DB["Raids"] then
 		if RSUM_DB["Raids"][name] then
 			RSUM_CopyGroup(vgroupassignment, RSUM_DB["Raids"][name]);
 		end
 	end
+	RSUM_SyncMemberSpecs();
 end
 
 -- create new table to save a raid. returns true if successful, false if not (e.g. name already taken)
 function RSUM_CreateSavedRaid(name)
 	RSUM_InitSavedRaids();
-	for k, v in pairs(savedraidnames) do
-		if name == v then
-			return false;
+	if savedraidnames then
+		for k, v in pairs(savedraidnames) do
+			if name == v then
+				return false;
+			end
 		end
 	end
 	
 	local newraid = {};
 	RSUM_CopyGroup(vgroupassignment, newraid);
 	
-	RSUM_DB["Raid"][name] = newraid;
-	savedraidnames.insert(name);
+	if not RSUM_DB["Raids"] then
+		RSUM_DB["Raids"] = {};
+	end
+	RSUM_DB["Raids"][name] = newraid;
+	table.insert(savedraidnames, name);
 	
-	modus = "ultravirtual";
+	RSUM_VirtualMode();
 	return true;
+end
+
+function RSUM_DeleteSavedRaid(name)
+	RSUM_InitSavedRaids();
+	if not savedraidnames then
+		return false;
+	end
+	for k, v in pairs(savedraidnames) do
+		if name == v then
+			if RSUM_DB["Raids"] and RSUM_DB["Raids"][name] then
+				RSUM_DB["Raids"][name] = nil;
+				table.remove(savedraidnames, k);
+			end
+			RSUM_StandardMode();
+		end
+	end
+end
+
+function RSUM_ChangeSavedRaidName(name, newname)
+	RSUM_InitSavedRaids();
+	for k, v in pairs(savedraidnames) do
+		if newname == v then
+			return false;
+		end
+	end
+	
+	if RSUM_DB["Raids"] and RSUM_DB["Raids"][name] then
+		local newraid = {};
+		RSUM_CopyGroup(RSUM_DB["Raids"][name], newraid);
+		RSUM_DB["Raids"][newname] = newraid;
+		RSUM_DB["Raids"][name] = nil;
+		
+		for k,v in pairs(savedraidnames) do
+			if v == name then
+				savedraidnames[k] = newname;
+				break;
+			end
+		end
+	end
 end
 
 

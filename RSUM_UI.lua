@@ -5,10 +5,12 @@ local window_update = true;
 local number = 0;
 local mainframe;
 local windowframe;
+local windowframetexture;
 local groupframes = {};
 local groupmemberframes = {};	-- groupmemberframes[group] = {player1frame, player2frame....}
 local groupmemberframesempty = {} -- groupmemberframes[framename] = true / nil
 local applyButtonMouseOver = false;
+local groupmemberframedropdown;
 local maxgroups = RSUM_MAXGROUPS;
 local maxmembers = RSUM_MAXMEMBERS;
 
@@ -20,8 +22,13 @@ local savenloadframe = false;
 local savenloadmenutable = {};
 local savenloaddropdownmenu = nil;
 
+local newmember_class = "WARRIOR";
+local newmember_class_texture = nil;
+local newmember_editbox = nil;
+
 -- side frame table
 local sideframetable = {["Options"] = optionsframe, ["SaveNLoad"] = savenloadframe};
+local sideframebuttontable = {};
 
 -- Drag Action
 local saved_frame = {["frame"] = nil, ["numpoints"] = 0, ["points"] = {}};		-- saved_frame["points"] = {point1, point2, ...} -- point1 = {"point", "relativeTo", "relativePoint", "xoff", "yoff"}
@@ -43,8 +50,8 @@ local exitbutton_height = 24;
 local exitbutton_width = 24;
 local exitbutton_offx = 4;
 local exitbutton_offy = 4;
-local symbolbutton_height = 30;
-local symbolbutton_width = 30;
+local symbolbutton_height = 32;
+local symbolbutton_width = 32;
 
 local options_height = 400;
 local options_width = 300;
@@ -52,19 +59,69 @@ local sidewindow_offx = 0;
 local sidewindow_offy = -40;
 
 -- visuals (aka textures, maybe fonts):
-local mainwindowframetexture = 0,0,0,0.7;
-local titleregiontexture = 0.1,0.1,0.1,1;
-local buttontexture = 0.2,0.2,0,1;
-local buttontexturehighlighted = 0.4,0.4,0,1;
-local groupframetexture = 0,0,0.4,1;
-local groupmemberframetexture = 0.1,0.1,0.1,1;
-local groupmemberframetexturehighlighted = 0.4,0.4,0.4,1;
---local savenloadsymboltexture = 0.1,0.4,0.5,1;
-local savenloadsymboltexture = "Media/button_speichern.png";
-local optionssymboltexture = 0.1,0.1,0.1,1;
+local mainwindowframetexture = {0,0,0,0.9};
+local mainwindowframetexturevirtual = {0,0,0.2,0.9};
+local titleregiontexture = 0.1;
+local buttontexture = 0.2;
+local buttontexturehighlighted = 0.4;
+local groupframetexture = 0;
+local groupmemberframetexture = 0.1;
+local groupmemberframetexturehighlighted = 0.4;
+local sidewindowframetexture = {0,0,0,1};
+local savenloadsymboltexture = "Interface\\AddOns\\RSUM\\Media\\button_savenload.tga";
+local savenloadsymboltexturehighlighted = "Interface\\AddOns\\RSUM\\Media\\button_savenloadhighlighted.tga";
+local savenloadsymboltexturepressed = "Interface\\AddOns\\RSUM\\Media\\button_savenloadpressed.tga";
+local optionssymboltexture = "Interface\\AddOns\\RSUM\\Media\\button_options.tga";
+local optionssymboltexturehighlighted = "Interface\\AddOns\\RSUM\\Media\\button_optionshighlighted.tga";
+local optionssymboltexturepressed = "Interface\\AddOns\\RSUM\\Media\\button_optionspressed.tga";
 
 -- descriptions
 local titleregiontext = "Raid Set Up Manager";
+
+
+-- popup dialogs:
+StaticPopupDialogs["RSUM_SAVENLOAD_CREATE"] = {
+	text = "Enter a name for the setup:",
+	button1 = "Accept",
+	button2 = "Cancel",
+	OnAccept = function(s, data)
+		local text = s.editBox:GetText();
+		RSUM_SaveNLoadCreate(text);
+		end,
+	hasEditBox = true,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+	preferredIndex = 3
+}
+
+StaticPopupDialogs["RSUM_SAVENLOAD_DELETE"] = {
+	text = "Do you really want to delete the setup %s?",
+	button1 = "Delete",
+	button2 = "Cancel",
+	OnAccept = function(s, data)
+		RSUM_SaveNLoadDelete();
+		end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+	preferredIndex = 3
+}
+
+StaticPopupDialogs["RSUM_SAVENLOAD_CHANGENAME"] = {
+	text = "Enter a new name for setup %s :",
+	button1 = "Accept",
+	button2 = "Cancel",
+	OnAccept = function(s, data)
+		local text = s.editBox:GetText();
+		RSUM_SaveNLoadChangeName(text);
+		end,
+	hasEditBox = true,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+	preferredIndex = 3
+}
 
 -- returns group, member of the groupmemberframes as integer
 function RSUM_GetGroupMemberByFrame(frame)
@@ -187,7 +244,12 @@ function RSUM_UpdateGroupMemberWindow(window, name)
 			name = "empty"
 			color = {["r"] = 0.8, ["g"] = 0.8, ["b"] = 0.8, ["a"] = 0.8};
 		else
-			color = RAID_CLASS_COLORS[RSUM_GetMemberClass(name)];
+			local class = RSUM_GetMemberClass(name);
+			if class then
+				color = RAID_CLASS_COLORS[class];
+			else
+				color = {r = 0.8, g = 0.8, b = 0.8, a = 1.0};
+			end
 		end
 		
 		fontstring:SetTextColor(color.r, color.g, color.b, color.a);
@@ -219,6 +281,62 @@ RSUM_OnWindowUpdate = function()
 end
 
 
+function RSUM_SetVirtualTexture()
+	windowframe.texture:Hide();
+	windowframe.texturevirtual:Show();
+end
+
+function RSUM_SetStandardTexture()
+	windowframe.texture:Show();
+	windowframe.texturevirtual:Hide();
+end
+
+
+function RSUM_GroupMemberFrameDropdown_Initialize(frame, level, menuList)
+	local group, member = RSUM_GetGroupMemberByFrame(frame:GetParent());
+	if group and member then
+		local info;
+		if level == 1 then
+			info = UIDropDownMenu_CreateInfo();
+			info.text = RSUM_GroupMember(RSUM_GetGroupMemberByFrame(frame:GetParent()));
+			info.isTitle = true;
+			info.notCheckable = true;
+			UIDropDownMenu_AddButton(info);
+		
+			info = UIDropDownMenu_CreateInfo();
+			info.text = "Change Class";
+			info.hasArrow = true;
+			info.notCheckable = true;
+			info.menuList = "Change Class";
+			UIDropDownMenu_AddButton(info);
+			
+			info = UIDropDownMenu_CreateInfo();
+			info.text = "Delete";
+			info.func = function(s, arg1, arg2, checked) local group, member = RSUM_GetGroupMemberByFrame(arg1:GetParent()); RSUM_RemoveVMemberFromGroup(group, member); RSUM_UpdateWindows(); end;
+			info.arg1 = frame;
+			info.notCheckable = true;
+			UIDropDownMenu_AddButton(info);
+			
+			info = UIDropDownMenu_CreateInfo();
+			info.text = "Cancel";
+			info.notCheckable = true;
+			UIDropDownMenu_AddButton(info);
+		
+		elseif menuList == "Change Class" then
+			for k, v in pairs(CLASS_ICON_TCOORDS) do
+				info = UIDropDownMenu_CreateInfo();
+				info.text = k;
+				info.arg1 = frame;
+				info.arg2 = k;
+				info.func = function(s,arg1,arg2,checked) local group, member = RSUM_GetGroupMemberByFrame(arg1:GetParent()); RSUM_ChangeMemberClass(group, member, arg2); CloseDropDownMenus(); end;
+				info.notCheckable = true;
+				UIDropDownMenu_AddButton(info, level);
+			end
+		
+		end
+	end
+end
+
 -- ---- Window Initiation ----
 function RSUM_Window_Init()
 		-- Transform Player
@@ -242,9 +360,16 @@ function RSUM_Window_Init()
 		windowframe:SetPoint("CENTER", 0, 0);
 		windowframe:SetFrameStrata("FULLSCREEN");
 		windowframe:SetMovable(true);
-		texture = windowframe:CreateTexture("rsummainwindowtexture");
+		windowframetexture = windowframe:CreateTexture("rsummainwindowtexture");
+		windowframetexture:SetAllPoints(windowframetexture:GetParent());
+		windowframetexture:SetTexture(unpack(mainwindowframetexture));
+		windowframe.texture = windowframetexture;
+		
+		texture = windowframe:CreateTexture("rsummainwindowtexturevirtual");
 		texture:SetAllPoints(texture:GetParent());
-		texture:SetTexture(mainwindowframetexture);
+		texture:SetTexture(unpack(mainwindowframetexturevirtual));
+		texture:Hide();
+		windowframe.texturevirtual = texture;
 		
 		-- symbol button line:
 		button = CreateFrame("Button", "rsumoptionssymbolbutton", windowframe);
@@ -252,13 +377,32 @@ function RSUM_Window_Init()
 		button:SetPoint("TOPRIGHT", -gw_padding, -gw_padding);
 		button:EnableMouse(true);
 		button:Enable();
-		button:RegisterForClicks("LeftButtonUp");
+		button:RegisterForClicks("LeftButtonDown");
 		button:SetScript("OnClick", function(s) RSUM_SideWindow("Options"); end);
+		button:SetScript("OnEnter", function(s) if not s.down then s.texture:Hide(); s.highlighted:Show(); end end);
+		button:SetScript("OnLeave", function(s) if not s.down then s.texture:Show(); s.highlighted:Hide(); end end);
 		button:Show();
 		
 		texture = button:CreateTexture("rsumoptionssymbolbuttontexture");
-		texture:SetAllPoints(texture:GetParent());
 		texture:SetTexture(optionssymboltexture);
+		texture:SetAllPoints(texture:GetParent());
+		texture:Show();
+		button.texture = texture;
+		
+		texture = button:CreateTexture("rsumoptionssymbolbuttontexturehighlighted");
+		texture:SetTexture(optionssymboltexturehighlighted);
+		texture:SetAllPoints(texture:GetParent());
+		texture:Hide();
+		button.highlighted = texture;
+		
+		texture = button:CreateTexture("rsumoptionssymbolbuttontexturepressed");
+		texture:SetTexture(optionssymboltexturepressed);
+		texture:SetAllPoints(texture:GetParent());
+		texture:Hide();
+		button.pressed = texture;
+		
+		button.down = false;
+		sideframebuttontable["Options"] = button;
 		
 		
 		button = CreateFrame("Button", "rsumsavenloadsymbolbutton", windowframe);
@@ -266,13 +410,32 @@ function RSUM_Window_Init()
 		button:SetPoint("TOPRIGHT", -gw_padding * 2 - symbolbutton_width, -gw_padding);
 		button:EnableMouse(true);
 		button:Enable();
-		button:RegisterForClicks("LeftButtonUp");
+		button:RegisterForClicks("LeftButtonDown");
 		button:SetScript("OnClick", function(s) RSUM_SideWindow("SaveNLoad"); end);
+		button:SetScript("OnEnter", function(s) if not s.down then s.texture:Hide(); s.highlighted:Show(); end end);
+		button:SetScript("OnLeave", function(s) if not s.down then s.texture:Show(); s.highlighted:Hide(); end end);
 		button:Show();
 		
 		texture = button:CreateTexture("rsumsavenloadsymbolbuttontexture");
-		texture:SetAllPoints(texture:GetParent());
 		texture:SetTexture(savenloadsymboltexture);
+		texture:SetAllPoints(texture:GetParent());
+		texture:Show();
+		button.texture = texture;
+		
+		texture = button:CreateTexture("rsumsavenloadsymbolbuttontexturehighlighted");
+		texture:SetTexture(savenloadsymboltexturehighlighted);
+		texture:SetAllPoints(texture:GetParent());
+		texture:Hide();
+		button.highlighted = texture;
+		
+		texture = button:CreateTexture("rsumsavenloadsymbolbuttontexturepressed");
+		texture:SetTexture(savenloadsymboltexturepressed);
+		texture:SetAllPoints(texture:GetParent());
+		texture:Hide();
+		button.pressed = texture;
+		
+		button.down = false;
+		sideframebuttontable["SaveNLoad"] = button;
 		
 		
 		-- buttons:
@@ -296,7 +459,7 @@ function RSUM_Window_Init()
 		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
-		button:SetScript("OnClick", function(s) RSUM_UpdateVGroup(); end);
+		button:SetScript("OnClick", function(s) RSUM_StandardMode(); RSUM_UpdateVGroup(); end);
 		button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Carefull!!!", 1, 0, 0); GameTooltip:AddLine("This will overwrite the virtual groups"); GameTooltip:Show(); end);
 		button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
 		
@@ -311,7 +474,7 @@ function RSUM_Window_Init()
 		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
-		button:SetScript("OnClick", function(s) RSUM_BuildGroups(); end);
+		button:SetScript("OnClick", function(s) RSUM_BuildGroups(); RSUM_StandardMode(); end);
 		button:SetScript("OnEnter", function(s) applyButtonMouseOver = true; GameTooltip:SetOwner(s); GameTooltip:AddLine("Apply Changes to Raid", 1, 0, 0); GameTooltip:AddLine("Can't be done to members in combat"); GameTooltip:Show(); end);
 		button:SetScript("OnLeave", function(s) applyButtonMouseOver = false; GameTooltip:Hide(); end);
 		button:SetScript("OnUpdate", RSUM_ApplyButtonOnUpdate);
@@ -360,7 +523,7 @@ function RSUM_Window_Init()
 			
 			groupmemberframes[group] = {};
 			for member=1,maxmembers,1 do
-				groupmemberframes[group][member] = CreateFrame("Frame","rsumgroup" .. group .. "memberwindow" .. member, groupframes[group]);
+				groupmemberframes[group][member] = CreateFrame("Button","rsumgroup" .. group .. "memberwindow" .. member, groupframes[group]);
 				RSUM_GroupMemberFrameAnchoring(group, member);
 				
 				local texture = groupmemberframes[group][member]:CreateTexture("rsumgroup" .. group .. "memberwindowtexture" .. member);
@@ -376,12 +539,17 @@ function RSUM_Window_Init()
 				end
 				groupmemberframes[group][member]:SetFrameStrata("FULLSCREEN");
 				groupmemberframes[group][member]:RegisterForDrag("LeftButton");
+				groupmemberframes[group][member]:RegisterForClicks("RightButtonDown");
 				groupmemberframes[group][member]:SetMovable(true);
 				groupmemberframes[group][member]:EnableMouse(true);
 				groupmemberframes[group][member]:SetScript("OnDragStart", RSUM_OnDragStart);
 				groupmemberframes[group][member]:SetScript("OnDragStop", RSUM_OnDragStop);
 				groupmemberframes[group][member]:SetScript("OnEnter", RSUM_OnEnter);
 				groupmemberframes[group][member]:SetScript("OnLeave", RSUM_OnLeave);
+				groupmemberframes[group][member]:SetScript("OnClick", function(s) if savenloadframe and savenloadframe:IsShown() and not groupmemberframesempty[s:GetName()] then ToggleDropDownMenu(1, nil, s.dropdown, "cursor", 0, 0); end end);
+				
+				groupmemberframes[group][member].dropdown = CreateFrame("Frame", "rsumgroup" .. group .. "memberwindow" .. member .. "dropdown", groupmemberframes[group][member], "UIDropDownMenuTemplate");
+				UIDropDownMenu_Initialize(groupmemberframes[group][member].dropdown, RSUM_GroupMemberFrameDropdown_Initialize);
 				
 			end
 		end
@@ -408,7 +576,7 @@ function RSUM_OptionsWindowInit()
 			optionsframe:SetPoint("TOPLEFT", windowframe, "TOPRIGHT", sidewindow_offx, sidewindow_offy);
 			optionsframe:SetSize(button_width + gw_padding * 2, 200);
 			local texture = optionsframe:CreateTexture();
-			texture:SetTexture(mainwindowframetexture);
+			texture:SetTexture(unpack(sidewindowframetexture));
 			texture:SetAllPoints(texture:GetParent());
 			
 			local fontstring = optionsframe:CreateFontString("rsumoptionsheader");
@@ -448,20 +616,69 @@ function RSUM_OptionsWindowInit()
 	end
 end
 
-RSUM_SaveNLoadCreatePopUp = function(s)
-	
+
+RSUM_SaveNLoadCreatePopup = function(s)
+	StaticPopup_Show("RSUM_SAVENLOAD_CREATE");
 end
 
-RSUM_SaveNLoadDeletePopUp = function(s)
-
+function RSUM_SaveNLoadCreate(name)
+	if name then
+		if RSUM_CreateSavedRaid(name) then
+			RSUM_SaveNLoadSetSelected(name);
+		else
+			print("Failed to create setup " .. name);
+			print("A setup with this name propably already exists.");
+		end
+	end
 end
 
-RSUM_SaveNLoadChangeNamePopUp = function(s)
+RSUM_SaveNLoadDeletePopup = function(s)
+	local text = UIDropDownMenu_GetText(savenloaddropdownmenu);
+	if text then
+		StaticPopup_Show("RSUM_SAVENLOAD_DELETE", text);
+	end
+end
 
+function RSUM_SaveNLoadDelete()
+	local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
+	if name then
+		RSUM_DeleteSavedRaid(name);
+		RSUM_SaveNLoadSetSelected();
+	end
+end
+
+RSUM_SaveNLoadChangeNamePopup = function(s)
+	local text = UIDropDownMenu_GetText(savenloaddropdownmenu);
+	if text then
+		StaticPopup_Show("RSUM_SAVENLOAD_CHANGENAME", text);
+	end
+end
+
+function RSUM_SaveNLoadChangeName(newname)
+	local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
+	if name then
+		RSUM_ChangeSavedRaidName(name, newname);
+		RSUM_SaveNLoadSetSelected(newname);
+	end
+end
+
+function RSUM_SaveNLoadSetSelected(name)
+	if name then
+		UIDropDownMenu_SetText(savenloaddropdownmenu, name);
+		savenloadframe.deletebutton:Enable();
+		savenloadframe.changenamebutton:Enable();
+	else
+		UIDropDownMenu_SetText(savenloaddropdownmenu);
+		savenloadframe.deletebutton:Disable();
+		savenloadframe.changenamebutton:Disable();
+	end
 end
 
 RSUM_SaveNLoadSave = function(s)
-
+	local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
+	if name then
+		RSUM_UpdateSavedRaid(name);
+	end
 end
 
 function RSUM_SaveNLoadDropDown_Menu(frame, level, menuList)
@@ -471,15 +688,36 @@ function RSUM_SaveNLoadDropDown_Menu(frame, level, menuList)
 		local names = RSUM_GetSavedRaidNames();
 		if names then
 			for k, v in ipairs(names) do
-				info.text, info.arg1, info.func = v, v, function(s, arg1, arg2, checked) RSUM_LoadSavedRaid(s, arg1, arg2, checked); UIDropDownMenu_SetText(savenloaddropdownmenu, arg1); end;
+				info.text, info.arg1, info.func = v, v, function(s, arg1, arg2, checked) RSUM_LoadSavedRaid(arg1); RSUM_SaveNLoadSetSelected(arg1); end;
 				UIDropDownMenu_AddButton(info);
 			end
 		end
 	end
 	local text = UIDropDownMenu_GetText(savenloaddropdownmenu);
-	if text then
+	if text and not (text == "") then
 		UIDropDownMenu_SetSelectedName(savenloaddropdownmenu, text);
+	else
+		UIDropDownMenu_SetSelectedName(savenloaddropdownmenu);
+		UIDropDownMenu_SetText(savenloaddropdownmenu);
 	end
+end
+
+function RSUM_NewMemberClassDropDownInitialize(frame, level, menuList)
+	
+	for class, v in pairs(CLASS_ICON_TCOORDS) do
+		local info = {};
+		info.text = class;
+		info.func = function(s, arg1, arg2, checked) RSUM_SetNewMemberClass(arg1); end;
+		info.arg1 = class;
+		info.arg2 = frame;
+		info.notCheckable = true;
+		UIDropDownMenu_AddButton(info);
+	end
+end
+
+function RSUM_SetNewMemberClass(class)
+	newmember_class = class;
+	newmember_class_texture:SetTexCoord(unpack(CLASS_ICON_TCOORDS[class]));
 end
 
 function RSUM_SaveNLoadWindowInit()
@@ -488,17 +726,21 @@ function RSUM_SaveNLoadWindowInit()
 			savenloadframe = CreateFrame("Frame", "rsumsavenloadwindow", windowframe);
 			savenloadframe:SetPoint("TOPLEFT", windowframe, "TOPRIGHT", sidewindow_offx, sidewindow_offy);
 			savenloadframe:SetSize(button_width + gw_padding * 2, 200);
+			savenloadframe:SetScript("OnHide", function(s) RSUM_StandardMode(); end);
+			savenloadframe:SetScript("OnShow", function(s) if savenloaddropdownmenu then
+								local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
+								if name and not (name == "") then RSUM_LoadSavedRaid(name) end end end);
 			local texture = savenloadframe:CreateTexture();
-			texture:SetTexture(mainwindowframetexture);
+			texture:SetTexture(unpack(sidewindowframetexture));
 			texture:SetAllPoints(texture:GetParent());
 			
 			local fontstring = savenloadframe:CreateFontString("rsumsavenloadheader");
-			fontstring:SetPoint("TOP", 0, -gw_padding - 50);
+			fontstring:SetPoint("TOP", 0, -gw_padding - 30);
 			fontstring:SetSize(button_width, button_height);
 			if not fontstring:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
 				print("Font not valid");
 			end
-			fontstring:SetText("Under Construction");
+			fontstring:SetText("Add new raid member:");
 			
 			local width = savenloadframe:GetWidth() - 3 * button_height - 2 * mw_padding - 3 * gw_padding;
 			savenloaddropdownmenu = CreateFrame("Frame", "rsumsavenloaddropdown", savenloadframe, "UIDropDownMenuTemplate");
@@ -511,25 +753,77 @@ function RSUM_SaveNLoadWindowInit()
 			button:SetSize(button_height, button_height);
 			button:SetText("+");
 			button:SetPoint("CENTER", savenloadframe, "TOPRIGHT", -button_height / 2 -gw_padding - mw_padding * 2 - button_height * 2, -button_height / 2 -gw_padding);
-			button:SetScript("OnClick", RSUM_SaveNLoadCreatePopUp);
+			button:SetScript("OnClick", RSUM_SaveNLoadCreatePopup);
+			button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Add a new set up"); GameTooltip:Show(); end);
+			button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+			savenloadframe.createbutton = button;
 			
 			local button = CreateFrame("Button", "rsumsavenloaddeletebutton", savenloadframe, "UIGoldBorderButtonTemplate");
 			button:SetSize(button_height, button_height);
 			button:SetText("-");
 			button:SetPoint("CENTER", savenloadframe, "TOPRIGHT", -button_height / 2 -gw_padding - mw_padding - button_height, -button_height / 2 -gw_padding);
-			button:SetScript("OnClick", RSUM_SaveNLoadDeletePopUp);
+			button:SetScript("OnClick", RSUM_SaveNLoadDeletePopup);
+			button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Delete this set up"); GameTooltip:Show(); end);
+			button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+			button:Disable();
+			savenloadframe.deletebutton = button;
 			
 			local button = CreateFrame("Button", "rsumsavenloadchangenamebutton", savenloadframe, "UIGoldBorderButtonTemplate");
 			button:SetSize(button_height, button_height);
 			button:SetText("*");
 			button:SetPoint("CENTER", savenloadframe, "TOPRIGHT", -button_height / 2 -gw_padding, -button_height / 2 -gw_padding);
-			button:SetScript("OnClick", RSUM_SaveNLoadChangeNamePopUp);
+			button:SetScript("OnClick", RSUM_SaveNLoadChangeNamePopup);
+			button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Change the name of this set up"); GameTooltip:Show(); end);
+			button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+			button:Disable();
+			savenloadframe.changenamebutton = button;
 			
 			local button = CreateFrame("Button", "rsumsavenloadsavebutton", savenloadframe, "UIPanelButtonTemplate");
 			button:SetPoint("BOTTOM", 0, gw_padding);
 			button:SetSize(savenloadframe:GetWidth() - gw_padding * 2, button_height);
 			button:SetText("Save");
 			button:SetScript("OnClick", RSUM_SaveNLoadSave);
+			
+			local newmemberbox = CreateFrame("Frame", nil, savenloadframe);
+			newmemberbox:SetPoint("TOP", 0, -gw_padding * 2 - button_height - 20);
+			newmemberbox:SetWidth(newmemberbox:GetParent():GetWidth() - gw_padding * 2);
+			newmemberbox:SetHeight(400);
+			
+			local editbox = CreateFrame("EditBox", "rsumsavenloadnewmembereditbox", newmemberbox, "InputBoxTemplate");
+			editbox:SetSize(button_width, button_height);
+			editbox:SetPoint("TOPLEFT", 0, 0);
+			editbox:ClearFocus();
+			editbox:SetAutoFocus(false);
+			editbox:SetText("player name");
+			editbox:SetScript("OnKeyUp", function(s, key) if key == "ESC" or key == "ENTER" then s:ClearFocus(); end end);
+			editbox:SetScript("OnEnterPressed", function(s) s:ClearFocus(); end);
+			savenloadframe.newmembereditbox = editbox;
+			newmember_editbox = editbox;
+			
+			local button = CreateFrame("Button", "rsumsavenloadnewmemberaddbutton", newmemberbox, "UIPanelButtonTemplate");
+			button:SetPoint("TOPRIGHT", 0, -mw_padding - button_height);
+			button:SetSize(50, button_height);
+			button:SetText("Add");
+			button:EnableMouse(true);
+			button:RegisterForClicks("LeftButtonUp");
+			button:SetScript("OnClick", function(s) RSUM_CreateMember(newmember_editbox:GetText(), newmember_class); end);
+			
+			
+			local button = CreateFrame("Button", "rsumsavenloadnewmemberclassbutton", newmemberbox);
+			button:SetPoint("TOPLEFT", 0, -mw_padding - button_height);
+			button:EnableMouse(true);
+			button:RegisterForClicks("AnyDown");
+			button:SetScript("OnClick", function(s) ToggleDropDownMenu(1, nil, s.dropdown, "cursor", 0, 0); end);
+			button:SetSize(button_height, button_height);
+			
+			button.dropdown = CreateFrame("Frame", "rsumsavenloadnewmemberclassdropdown", button);
+			UIDropDownMenu_Initialize(button.dropdown, RSUM_NewMemberClassDropDownInitialize);
+			
+			button.texture = button:CreateTexture("rsumsavenloadnewmemberclasstexture");
+			button.texture:SetAllPoints(button);
+			button.texture:SetTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES");
+			button.texture:SetTexCoord(unpack(CLASS_ICON_TCOORDS[newmember_class]));
+			newmember_class_texture = button.texture;
 			
 		end
 	end
@@ -548,6 +842,23 @@ function RSUM_SideWindowInit(name)
 	end
 end
 
+local function RSUM_SideWindowButtonDown(name, value)
+	if not sideframebuttontable[name] then
+		return;
+	end
+	if value then
+		sideframebuttontable[name].down = true;
+		sideframebuttontable[name].texture:Hide();
+		sideframebuttontable[name].highlighted:Hide();
+		sideframebuttontable[name].pressed:Show();
+	else
+		sideframebuttontable[name].down = false;
+		sideframebuttontable[name].texture:Show();
+		sideframebuttontable[name].highlighted:Hide();
+		sideframebuttontable[name].pressed:Hide();
+	end
+end
+
 function RSUM_SideWindow(name)
 	if name == nil then
 		for k, v in pairs(sideframetable) do
@@ -561,17 +872,21 @@ function RSUM_SideWindow(name)
 		if not RSUM_SideWindowInit(name) then
 			return;
 		end
+		RSUM_SideWindowButtonDown(name, true);
 	else
 		if sideframetable[name]:IsShown() then
 			sideframetable[name]:Hide();
+			RSUM_SideWindowButtonDown(name, false);
 		else
 			sideframetable[name]:Show();
+			RSUM_SideWindowButtonDown(name, true);
 		end
 	end
 	
 	for k, v in pairs(sideframetable) do
 		if v and not (k == name) then
 			v:Hide();
+			RSUM_SideWindowButtonDown(k, false)
 		end
 	end
 end
