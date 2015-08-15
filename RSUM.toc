@@ -2,7 +2,7 @@
 ## Title: Dady's Raid Set Up Manager
 ## Notes: /raidsetup or /rsum
 ## Author: Dadybang
-## Version: 0.3
+## Version: 0.3.1
 
 ## SavedVariables: RSUM_Options, RSUM_DB
 
