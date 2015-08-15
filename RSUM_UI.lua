@@ -841,8 +841,8 @@ function RSUM_SaveNLoadWindowInit()
 			button:SetText("Clear");
 			button:RegisterForClicks("AnyUp");
 			button:SetScript("OnClick", function(s, button) if button == "LeftButton" then RSUM_ClearVGroup(); elseif button == "RightButton" then RSUM_RemoveNonRaidMembers(); end end);
-			button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Left Mouse: Remove all members from setup."); 
-																			 GameTooltip:AddLine("Right Mouse: Remove members currently not in the raid."); GameTooltip:Show(); end);
+			button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Left Click: Remove all members from setup."); 
+																			 GameTooltip:AddLine("Right Click: Remove members currently not in the raid."); GameTooltip:Show(); end);
 			button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
 			
 			local button = CreateFrame("Button", "rsumsavenloadclearbutton", savenloadframe, "UIPanelButtonTemplate");
