@@ -311,7 +311,7 @@ function RSUM_GroupMemberFrameDropdown_Initialize(frame, level, menuList)
 			UIDropDownMenu_AddButton(info);
 			
 			info = UIDropDownMenu_CreateInfo();
-			info.text = "Delete";
+			info.text = "Remove";
 			info.func = function(s, arg1, arg2, checked) local group, member = RSUM_GetGroupMemberByFrame(arg1:GetParent()); RSUM_RemoveVMemberFromGroup(group, member); RSUM_UpdateWindows(); end;
 			info.arg1 = frame;
 			info.notCheckable = true;
@@ -681,6 +681,13 @@ RSUM_SaveNLoadSave = function(s)
 	end
 end
 
+RSUM_SaveNLoadReload = function(s)
+	local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
+	if name and not (name == "") then
+		RSUM_LoadSavedRaid(name);
+	end
+end
+
 function RSUM_SaveNLoadDropDown_Menu(frame, level, menuList)
 	local info = UIDropDownMenu_CreateInfo()
 	
@@ -718,6 +725,44 @@ end
 function RSUM_SetNewMemberClass(class)
 	newmember_class = class;
 	newmember_class_texture:SetTexCoord(unpack(CLASS_ICON_TCOORDS[class]));
+end
+
+function RSUM_SaveNLoadImportDropDown(frame, level, menuList)
+	local info;
+	if level == 1 then
+		info = UIDropDownMenu_CreateInfo();
+		info.text = "Import from another setup";
+		info.hasArrow = true;
+		info.notCheckable = true;
+		info.menuList = "setup";
+		UIDropDownMenu_AddButton(info);
+		
+		info = UIDropDownMenu_CreateInfo();
+		info.text = "Import from raid";
+		info.notCheckable = true;
+		info.func = RSUM_ImportFromRaid;
+		UIDropDownMenu_AddButton(info);
+		
+		info = UIDropDownMenu_CreateInfo();
+		info.text = "Cancel";
+		info.notCheckable = true;
+		UIDropDownMenu_AddButton(info);
+		
+	else
+		if menuList == "setup" then
+			local names = RSUM_GetSavedRaidNames();
+			if names then
+				for k, v in ipairs(names) do
+					info = UIDropDownMenu_CreateInfo();
+					info.text = v;
+					info.arg1 = v;
+					info.func = function(s,name) RSUM_ImportFromSavedRaid(name); CloseDropDownMenus(); end;
+					info.notCheckable = true;
+					UIDropDownMenu_AddButton(info, level);
+				end
+			end
+		end
+	end
 end
 
 function RSUM_SaveNLoadWindowInit()
@@ -779,10 +824,37 @@ function RSUM_SaveNLoadWindowInit()
 			savenloadframe.changenamebutton = button;
 			
 			local button = CreateFrame("Button", "rsumsavenloadsavebutton", savenloadframe, "UIPanelButtonTemplate");
-			button:SetPoint("BOTTOM", 0, gw_padding);
-			button:SetSize(savenloadframe:GetWidth() - gw_padding * 2, button_height);
+			button:SetPoint("BOTTOMLEFT", gw_padding, gw_padding);
+			button:SetSize( (savenloadframe:GetWidth() - gw_padding * 2) / 2, button_height);
+			button:SetText("Reload");
+			button:SetScript("OnClick", RSUM_SaveNLoadReload);
+			
+			local button = CreateFrame("Button", "rsumsavenloadsavebutton", savenloadframe, "UIPanelButtonTemplate");
+			button:SetPoint("BOTTOMRIGHT", -gw_padding, gw_padding);
+			button:SetSize( (savenloadframe:GetWidth() - gw_padding * 2) / 2, button_height);
 			button:SetText("Save");
 			button:SetScript("OnClick", RSUM_SaveNLoadSave);
+			
+			local button = CreateFrame("Button", "rsumsavenloadclearbutton", savenloadframe, "UIPanelButtonTemplate");
+			button:SetPoint("BOTTOMLEFT", gw_padding, gw_padding * 2 + button_height);
+			button:SetSize( (savenloadframe:GetWidth() - gw_padding * 2) / 2, button_height);
+			button:SetText("Clear");
+			button:RegisterForClicks("AnyUp");
+			button:SetScript("OnClick", function(s, button) if button == "LeftButton" then RSUM_ClearVGroup(); elseif button == "RightButton" then RSUM_RemoveNonRaidMembers(); end end);
+			button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Left Mouse: Remove all members from setup."); 
+																			 GameTooltip:AddLine("Right Mouse: Remove members currently not in the raid."); GameTooltip:Show(); end);
+			button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+			
+			local button = CreateFrame("Button", "rsumsavenloadclearbutton", savenloadframe, "UIPanelButtonTemplate");
+			button:SetPoint("BOTTOMRIGHT", -gw_padding, gw_padding * 2 + button_height);
+			button:SetSize( (savenloadframe:GetWidth() - gw_padding * 2) / 2, button_height);
+			button:SetText("Import");
+			button:SetScript("OnClick", function(s) ToggleDropDownMenu(1, nil, s.dropdown, "cursor", 0, 0); end);
+			
+			button.dropdown = CreateFrame("Frame", "rsumsavenloadimportbutton", button, "UIDropDownMenuTemplate");
+			UIDropDownMenu_Initialize(button.dropdown, RSUM_SaveNLoadImportDropDown);
+			
+			
 			
 			local newmemberbox = CreateFrame("Frame", nil, savenloadframe);
 			newmemberbox:SetPoint("TOP", 0, -gw_padding * 2 - button_height - 20);
@@ -807,7 +879,6 @@ function RSUM_SaveNLoadWindowInit()
 			button:EnableMouse(true);
 			button:RegisterForClicks("LeftButtonUp");
 			button:SetScript("OnClick", function(s) RSUM_CreateMember(newmember_editbox:GetText(), newmember_class); end);
-			
 			
 			local button = CreateFrame("Button", "rsumsavenloadnewmemberclassbutton", newmemberbox);
 			button:SetPoint("TOPLEFT", 0, -mw_padding - button_height);

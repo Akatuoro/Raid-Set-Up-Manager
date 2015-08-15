@@ -101,6 +101,58 @@ local function RSUM_FindSpotForMember(rear)
 	end
 end
 
+function RSUM_ClearVGroup()
+	RSUM_VirtualMode();
+	for i=1,maxgroups,1 do
+		vgroupassignment[i] = {};
+	end
+	RSUM_UpdateWindows();
+end
+
+
+function RSUM_RemoveNonRaidMembers()
+	for i=1,maxgroups,1 do
+		for j=1,maxmembers,1 do
+			if vgroupassignment[i][j] then
+				if not UnitInRaid(vgroupassignment[i][j]) then
+					vgroupassignment[i][j] = nil;
+				else
+					for k=1,j-1,1 do
+						if vgroupassignment[i][k] == nil then
+							vgroupassignment[i][k] = vgroupassignment[i][j];
+							vgroupassignment[i][j] = nil;
+							break;
+						end
+					end
+				end
+			end
+		end
+	end
+	RSUM_UpdateWindows();
+end
+
+
+function RSUM_ImportFromRaid()
+	local l = {};
+	for group=1,maxgroups,1 do
+		for member=1,maxmembers,1 do
+			if vgroupassignment[group][member] then
+				l[vgroupassignment[group][member]] = true;
+			end
+		end
+	end
+	
+	for i=1,GetNumGroupMembers(),1 do
+		local name, rank, subgroup, level, class, fileName, zone, online, isDead, raidrole, isML = GetRaidRosterInfo(i);
+		local role = UnitGroupRolesAssigned("raid" .. i);
+		if name and not l[name] then
+			vraidmembers[name] = {rank = rank, class = fileName, role = role, real = true};
+			local group = RSUM_FindSpotForMember();
+			RSUM_AddVMemberToGroup(name, group);
+		end
+	end
+	RSUM_UpdateWindows();
+end
 
 -- set virtual groups based on the real ones
 function RSUM_UpdateVGroup()
@@ -580,6 +632,35 @@ function RSUM_LoadSavedRaid(name)
 	RSUM_SyncMemberSpecs();
 	RSUM_UpdateWindows();
 	return {};
+end
+
+function RSUM_ImportFromSavedRaid(name)
+	if RSUM_DB["Raids"] then
+		if RSUM_DB["Raids"][name] then
+			RSUM_VirtualMode();
+			local v = RSUM_DB["Raids"][name];
+			local l = {};
+			for group=1,maxgroups,1 do
+				for member=1,maxmembers,1 do
+					if vgroupassignment[group][member] then
+						l[vgroupassignment[group][member]] = true;
+					end
+				end
+			end
+			for group=1,maxgroups,1 do
+				if v[group] then
+					for member=1,maxmembers,1 do
+						if v[group][member] and not l[v[group][member]] then
+							local targetgroup = RSUM_FindSpotForMember();
+							RSUM_AddVMemberToGroup(v[group][member], targetgroup);
+						end
+					end
+				end
+			end
+		end
+	end
+	RSUM_SyncMemberSpecs();
+	RSUM_UpdateWindows();
 end
 
 function RSUM_UpdateSavedRaid(name)
