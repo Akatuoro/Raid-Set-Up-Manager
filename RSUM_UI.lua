@@ -692,6 +692,27 @@ function RSUM_OptionsWindowInit()
 			optioncheck_ml:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Get reminded when you should maybe use master loot or change the master looter"); GameTooltip:Show(); end);
 			optioncheck_ml:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
 			
+			local optionfontstring_autoreset = optionsframe:CreateFontString("$PARENT_autoreset");
+			optionfontstring_autoreset:SetPoint("TOPRIGHT", optionfontstring_ml, "BOTTOMRIGHT", 0, -gw_padding);
+			optionfontstring_ml:SetSize(button_width - button_height, button_height);
+			if not optionfontstring_autoreset:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
+				print("Font not valid");
+			end
+			optionfontstring_autoreset:SetText("Reset all changes when window is closed");
+			
+			local optioncheck_autoreset = CreateFrame("CheckButton", "$PARENT_autoresetcb", optionsframe, "UICheckButtonTemplate");
+			optioncheck_autoreset:SetPoint("TOPLEFT", optioncheck_ml, "BOTTOMLEFT", 0, -gw_padding);
+			optioncheck_autoreset:SetSize(button_height, button_height);
+			if RSUM_Options["noautoreset"] then
+				optioncheck_autoreset:SetChecked(false);
+			else
+				optioncheck_autoreset:SetChecked(true);
+			end
+			optioncheck_autoreset:SetScript("OnClick", function(s) RSUM_Options["masterloot"] = s:GetChecked(); end);
+			optioncheck_autoreset:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine(""); GameTooltip:Show(); end);
+			optioncheck_autoreset:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+			
+			
 		end
 	end
 end
