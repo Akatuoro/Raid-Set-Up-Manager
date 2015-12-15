@@ -1,5 +1,6 @@
 -- important variables
 local window_update = true;
+local addon, ns = ...
 
 -- UI Element Pointers
 local number = 0;
@@ -74,6 +75,9 @@ local savenloadsymboltexturepressed = "Interface\\AddOns\\RSUM\\Media\\button_sa
 local optionssymboltexture = "Interface\\AddOns\\RSUM\\Media\\button_options.tga";
 local optionssymboltexturehighlighted = "Interface\\AddOns\\RSUM\\Media\\button_optionshighlighted.tga";
 local optionssymboltexturepressed = "Interface\\AddOns\\RSUM\\Media\\button_optionspressed.tga";
+
+-- Tex Coords
+local roleTexCoords = {DAMAGER = {left = 0.3125, right = 0.609375, top = 0.328125, bottom = 0.625}, HEALER = {left = 0.3125, right = 0.609375, top = 0.015625, bottom = 0.3125}, TANK = {left = 0, right = 0.296875, top = 0.328125, bottom = 0.625}};
 
 -- descriptions
 local titleregiontext = "Raid Set Up Manager";
@@ -203,15 +207,10 @@ function RSUM_GroupMemberFrameAnchoring(group, member)
 end
 
 function RSUM_GroupMemberFrameHighlight(frame, enable)
-	for i=1,frame:GetNumRegions(),1 do
-		local texture = select(i,frame:GetRegions());
-		if texture:GetObjectType() == "Texture" then
-			if enable then
-				texture:SetTexture(groupmemberframetexturehighlighted);
-			else
-				texture:SetTexture(groupmemberframetexture);
-			end
-		end
+	if enable then
+		frame.background:SetTexture(groupmemberframetexturehighlighted);
+	else
+		frame.background:SetTexture(groupmemberframetexture);
 	end
 end
 
@@ -228,21 +227,12 @@ function RSUM_UpdateGroupMemberWindow(window, name)
 			print(window:GetName());
 			return false;
 		end
-		local fontstring;
-		for i=1,window:GetNumRegions(),1 do
-			fontstring = select(i, window:GetRegions());
-			if fontstring:GetObjectType() == "FontString" then
-				break;
-			end
-		end
-		if fontstring == nil then
-			return false;
-		end
 		
 		local color;
 		if name == nil then
 			name = "empty"
 			color = {["r"] = 0.8, ["g"] = 0.8, ["b"] = 0.8, ["a"] = 0.8};
+			window.roleTexture:Hide();
 		else
 			local class = RSUM_GetMemberClass(name);
 			if class then
@@ -250,15 +240,45 @@ function RSUM_UpdateGroupMemberWindow(window, name)
 			else
 				color = {r = 0.8, g = 0.8, b = 0.8, a = 1.0};
 			end
+			local role = RSUM_GetMemberRole(name);
+			if role and roleTexCoords[role] then
+				window.roleTexture:SetTexCoord(roleTexCoords[role].left, roleTexCoords[role].right, roleTexCoords[role].top, roleTexCoords[role].bottom);
+				window.roleTexture:Show();
+			else
+				window.roleTexture:Hide();
+			end
 		end
 		
-		fontstring:SetTextColor(color.r, color.g, color.b, color.a);
-		fontstring:SetText(name);
+		window.nameText:SetTextColor(color.r, color.g, color.b, color.a);
+		window.nameText:SetText(name);
 		return true;
 end
 
 function RSUM_UpdateWindows()
 	window_update = true;
+end
+
+local function RSUM_StatusTextUpdate()
+	local mode, sync, apply, number, combat = RSUM_GetStatus();
+	local firstline, secondline = "", "";
+	
+	if mode == "standard" then
+		if sync == true then
+			firstline = "Standard mode";
+			secondline = "";
+		else
+			if apply then
+				firstline = "Applying Changes";
+			else
+				firstline = "Changes have been made";
+			end
+			secondline = "Changes: " .. tostring(number) .. " Combat: " .. tostring(combat);
+		end
+	elseif mode == "ultravirtual" then
+		firstline = "Modifying a template";
+	end
+	
+	windowframe.status:SetText(firstline .. "\n" .. secondline);
 end
 
 RSUM_OnWindowUpdate = function()
@@ -275,9 +295,12 @@ RSUM_OnWindowUpdate = function()
 				end
 			end
 		end
+		RSUM_StatusTextUpdate();
 	end
 	window_update = false;
-
+	
+	RSUM_TimedEvents();
+	
 end
 
 
@@ -349,6 +372,7 @@ function RSUM_Window_Init()
 		mainframe:SetScript("OnEvent", RSUM_OnEvent);
 		mainframe:SetScript("OnUpdate", RSUM_OnWindowUpdate);
 		mainframe:Show();
+		ns.mainframe = mainframe;
 		
 		local texture = nil;
 		local font = "Fonts\\FRIZQT__.TTF", 12, "";
@@ -437,6 +461,24 @@ function RSUM_Window_Init()
 		button.down = false;
 		sideframebuttontable["SaveNLoad"] = button;
 		
+		-- status text area
+		local frame = CreateFrame("Frame", "$PARENTstatusframe", windowframe);
+		frame:SetPoint("TOPLEFT", gw_padding, -gw_padding);
+		frame:SetPoint("BOTTOMRIGHT", button, "BOTTOMLEFT", -gw_padding, 0);
+		local fontstring = frame:CreateFontString("$PARENTfontstring");
+		
+		if not fontstring:SetFont("Fonts\\FRIZQT__.TTF", floor(frame:GetHeight() / 2) - 1, "") then
+			print("Font not valid");
+		end
+		fontstring:SetAllPoints();
+		fontstring:Show();
+		fontstring:SetJustifyH("CENTER");
+		fontstring:SetJustifyV("CENTER");
+		fontstring:SetTextColor(230/255, 190/255, 0, 1);
+		fontstring:SetText("Initialized");
+		windowframe.status = fontstring;
+		
+		
 		
 		-- buttons:
 		button = CreateFrame("Button", "rsumexitbutton", windowframe, "UIPanelCloseButton");
@@ -474,7 +516,7 @@ function RSUM_Window_Init()
 		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
-		button:SetScript("OnClick", function(s) RSUM_BuildGroups(); RSUM_StandardMode(); end);
+		button:SetScript("OnClick", function(s) RSUM_Apply(); RSUM_StandardMode(); end);
 		button:SetScript("OnEnter", function(s) applyButtonMouseOver = true; GameTooltip:SetOwner(s); GameTooltip:AddLine("Apply Changes to Raid", 1, 0, 0); GameTooltip:AddLine("Can't be done to members in combat"); GameTooltip:Show(); end);
 		button:SetScript("OnLeave", function(s) applyButtonMouseOver = false; GameTooltip:Hide(); end);
 		button:SetScript("OnUpdate", RSUM_ApplyButtonOnUpdate);
@@ -530,13 +572,30 @@ function RSUM_Window_Init()
 				local fontstring = groupmemberframes[group][member]:CreateFontString("rsumgroup" .. group .. "memberwindowstring" .. member);
 				texture:SetAllPoints(texture:GetParent());
 				texture:SetTexture(groupmemberframetexture);
-				fontstring:SetAllPoints(fontstring:GetParent());
+				texture:SetDrawLayer("BACKGROUND", 0);
+				groupmemberframes[group][member].background = texture;
+				
+				fontstring:SetPoint("TOP", 0, 0);
+				fontstring:SetPoint("BOTTOM", 0, 0);
+				fontstring:SetPoint("LEFT", fontstring:GetParent():GetHeight() + 4, 0);
+				fontstring:SetPoint("RIGHT", -fontstring:GetParent():GetHeight() - 4, 0);
 				fontstring:SetJustifyH("CENTER");
 				fontstring:SetJustifyV("CENTER");
 				local font_valid = fontstring:SetFont("Fonts\\FRIZQT__.TTF", 12, "");
 				if not font_valid then
 					print("Font not valid");
 				end
+				groupmemberframes[group][member].nameText = fontstring;
+				
+				texture = groupmemberframes[group][member]:CreateTexture();
+				texture:SetPoint("LEFT", 4, 0);
+				texture:SetPoint("RIGHT", texture:GetParent(), "LEFT", texture:GetParent():GetHeight() + 4, 0);
+				texture:SetHeight(texture:GetParent():GetHeight());
+				texture:SetTexture("Interface\\LFGFRAME\\UI-LFG-ICON-PORTRAITROLES.tga");
+				texture:SetDrawLayer("OVERLAY", 7);
+				groupmemberframes[group][member].roleTexture = texture;
+				texture:Hide();
+				
 				groupmemberframes[group][member]:SetFrameStrata("FULLSCREEN");
 				groupmemberframes[group][member]:RegisterForDrag("LeftButton");
 				groupmemberframes[group][member]:RegisterForClicks("RightButtonDown");
@@ -612,6 +671,27 @@ function RSUM_OptionsWindowInit()
 			optionbutton_keybind:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:SetText("Click to change"); end);
 			optionbutton_keybind:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
 			optionbutton_keybind:EnableKeyboard(false);
+			
+			local optionfontstring_ml = optionsframe:CreateFontString("$PARENT_masterloot");
+			optionfontstring_ml:SetPoint("TOPRIGHT", optionbutton_keybind, "BOTTOMRIGHT", 0, -gw_padding);
+			optionfontstring_ml:SetSize(button_width - button_height, button_height);
+			if not optionfontstring_ml:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
+				print("Font not valid");
+			end
+			optionfontstring_ml:SetText("Masterloot reminder");
+			
+			local optioncheck_ml = CreateFrame("CheckButton", "$PARENT_masterlootcb", optionsframe, "UICheckButtonTemplate");
+			optioncheck_ml:SetPoint("TOPLEFT", optionbutton_keybind, "BOTTOMLEFT", 0, -gw_padding);
+			optioncheck_ml:SetSize(button_height, button_height);
+			if RSUM_Options["masterloot"] then
+				optioncheck_ml:SetChecked(true);
+			else
+				optioncheck_ml:SetChecked(false);
+			end
+			optioncheck_ml:SetScript("OnClick", function(s) RSUM_Options["masterloot"] = s:GetChecked(); end);
+			optioncheck_ml:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Get reminded when you should maybe use master loot or change the master looter"); GameTooltip:Show(); end);
+			optioncheck_ml:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+			
 		end
 	end
 end
@@ -1053,12 +1133,7 @@ RSUM_OnDragStop = function(s, ...)
 			RSUM_MoveVMember(sourcegroup, sourcemember, targetgroup);
 		end
 		
-		local nummembers, _ = RSUM_GetNumRaidMembersToMove();
-		if nummembers > 0 then
-			RSUM_GroupSync(false);
-		else
-			RSUM_GroupSync(true);
-		end
+		RSUM_GroupSync(false);
 		RSUM_UpdateWindows();
 	end
 end

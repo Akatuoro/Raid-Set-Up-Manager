@@ -7,6 +7,13 @@ local vgroups_insync = true;
 local modus = "standard";
 
 
+local apply_query = false;
+local timer_next = 0;
+local timer_step = 1;
+local reminder_lockout = 0;
+local reminder_lockouttime = 10;
+
+
 -- virtual raid
 local vraidmembers = {};		-- vraidmembers[name] = {raidid, rank, class, role}
 local vgroupassignment = {};	-- vgroupassignment[subgroup] = {player1, player2, player3, player4, player5}  where playerx is a name
@@ -21,6 +28,37 @@ local groupassignmentcopy = nil;
 -- RSUM_DB["Raids"][name] equivalent to vgroupassignment for raid identified by name
 
 local savedraidnames = nil;
+
+-- Mode Control
+
+-- RSUM_GetStatus
+-- return modus, sync, apply, number, combat
+-- modus - currend mode
+-- sync - if vgroups_insync; in future updates if setup is changed from saved setup in ultravirtual mode
+-- apply - if apply_query (if it's currently trying to apply changes)
+-- number - number of raid members to move
+-- combat - numbers of raid members to move that are in combat
+function RSUM_GetStatus()
+	local sync, apply, number, combat = false, false, 0, 0;
+	if modus == "standard" then
+		if vgroups_insync then
+			sync = true;
+		else
+			number, combat = RSUM_GetNumRaidMembersToMove();
+		end
+		if apply_query then
+			apply = true;
+		end
+	end
+	if modus == "ultravirtual" then
+		if apply_query then
+			apply = true;
+			number, combat = RSUM_GetNumRaidMembersToMove();
+		end
+	end
+	
+	return modus, sync, apply, number, combat;
+end
 
 function RSUM_VirtualMode()
 	if modus == "standard" then
@@ -48,6 +86,31 @@ function RSUM_Test()
 	else
 		modus = "testing";
 	end
+end
+
+local function RSUM_MasterlootCheck()
+	if RSUM_Options["masterloot"] then
+		if IsInRaid() and GetRaidDifficultyID() == 16 and reminder_lockout < GetTime() then
+			local lootmethod, _, masterlooterRaidID = GetLootMethod();
+			if not (lootmethod == "master") then
+				print("|cffff0000Loot is currently being distributed by " .. lootmethod);
+				reminder_lockout = GetTime() + reminder_lockouttime;
+			elseif select(3, GetRaidRosterInfo(masterlooterRaidID)) > 4 then
+				print("|cffff0000Loot master " .. GetRaidRosterInfo(masterlooterRaidID) .. " is not in group 1-4");
+				reminder_lockout = GetTime() + reminder_lockouttime;
+			end
+		end
+	end
+end
+
+function RSUM_TimedEvents()
+	if apply_query then
+		if timer_next < GetTime() then
+			RSUM_Apply();
+			timer_next = GetTime() + timer_step;
+		end
+	end
+	RSUM_MasterlootCheck();
 end
 
 local function RSUM_VGroupInit()
@@ -279,11 +342,13 @@ function RSUM_GroupRosterUpdate()
 		end
 	end
 	
+	RSUM_GroupSync(true);
+	
 	RSUM_UpdateWindows();
 end
 
 
-function RSUM_BuildGroups()
+function RSUM_Apply()
 	-- check for permissions
 	if not UnitIsRaidOfficer("player") and not UnitIsGroupLeader("player") then
 		print("Raid Set Up Manager - No permission to change groups");
@@ -291,7 +356,15 @@ function RSUM_BuildGroups()
 		return;
 	end
 	
+	if not UnitAffectingCombat("player") then
+		RSUM_BuildGroups();
+	end
+	
+	RSUM_GroupSync(true, true);
+	groupassignmentcopy = nil;
+end
 
+function RSUM_BuildGroups()
 	-- Preparation
 	local numsubgroupmember = {};	-- numsubgroupmember[subgroup] = number
 	local vnumsubgroupmember = {};	-- vnumsubgroupmember[subgroup] = member -- number of players supposed to be in the subgroup
@@ -391,7 +464,6 @@ function RSUM_BuildGroups()
 			end
 		end
 	end
-	groupassignmentcopy = nil;
 end
 
 -- add virtual member to virtual group. fails if group full
@@ -503,6 +575,13 @@ function RSUM_GetMemberClass(name)
 	return nil;
 end
 
+function RSUM_GetMemberRole(name)
+	if name and vraidmembers[name] then
+		return vraidmembers[name]["role"];
+	end
+	return nil;
+end
+
 function RSUM_ChangeMemberClass(group, member, class)
 	if group and member then
 		if vgroupassignment[group] and vgroupassignment[group][member] then
@@ -538,8 +617,26 @@ function RSUM_CreateMember(name, class)
 	RSUM_UpdateWindows();
 end
 
-function RSUM_GroupSync(enable)
-	vgroups_insync = enable;
+function RSUM_GroupSync(enable, apply)
+	local nummembers, _ = RSUM_GetNumRaidMembersToMove();
+	if nummembers > 0 then
+		if enable == false then
+			vgroups_insync = enable;
+			if not apply then
+				apply_query = false;
+			end
+		else
+			if apply and not apply_query then
+				apply_query = true;
+				timer_next = GetTime() + timer_step;
+			end
+		end
+	else
+		vgroups_insync = true;
+		
+		RSUM_MasterlootCheck();
+		apply_query = false;
+	end
 end
 
 function RSUM_CopyGroup(source, target)

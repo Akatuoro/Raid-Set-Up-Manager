@@ -1,8 +1,8 @@
 ## Interface: 60200
-## Title: Dady's Raid Set Up Manager
+## Title: Raid Set Up Manager
 ## Notes: /raidsetup or /rsum
-## Author: Dadybang
-## Version: 0.3.1
+## Author: Akatuoro
+## Version: 0.4
 
 ## SavedVariables: RSUM_Options, RSUM_DB
 
