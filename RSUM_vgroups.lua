@@ -1,5 +1,6 @@
 -- important variables
 local vgroups_insync = true;
+local addon, ns = ...
 
 -- modi:
 -- "standard" - check for vgroups_insync, vraidmembers contain exactly the real members
@@ -140,6 +141,12 @@ local function RSUM_GroupByName(name)
 		end
 	end
 	return nil,nil;
+end
+
+function ns.SortGroupByName(group)
+	if group and vgroupassignment[group] then
+		table.sort(vgroupassignment[group])
+	end
 end
 
 local function RSUM_FindSpotForMember(rear)
@@ -635,8 +642,12 @@ function RSUM_GroupSync(enable, apply)
 		vgroups_insync = true;
 		
 		RSUM_MasterlootCheck();
-		apply_query = false;
+		if apply_query then
+			ns.PrintMsg("Groups successfully built")
+			apply_query = false;
+		end
 	end
+	RSUM_UpdateWindows()
 end
 
 function RSUM_CopyGroup(source, target)
@@ -712,6 +723,9 @@ function RSUM_GetSavedRaidNames()
 		return {"Raid 1", "Raid 2", "Raid 3", "Raid 4"};
 	end
 	RSUM_InitSavedRaids();
+	if ns.Option("sortsavedpresets") then
+		table.sort(savedraidnames)
+	end
 	return savedraidnames;
 end
 
@@ -772,6 +786,8 @@ function RSUM_UpdateSavedRaid(name)
 	if RSUM_DB["Raids"] then
 		if RSUM_DB["Raids"][name] then
 			RSUM_CopyGroup(vgroupassignment, RSUM_DB["Raids"][name]);
+			
+			ns.PrintMsg("Saved preset |cff11ddcc" .. name .. "|r saved")
 		end
 	end
 	RSUM_SyncMemberSpecs();
@@ -797,6 +813,8 @@ function RSUM_CreateSavedRaid(name)
 	RSUM_DB["Raids"][name] = newraid;
 	table.insert(savedraidnames, name);
 	
+	ns.PrintMsg("Saved preset |cff11ddcc" .. name .. "|r created")
+	
 	RSUM_VirtualMode();
 	return true;
 end
@@ -811,6 +829,8 @@ function RSUM_DeleteSavedRaid(name)
 			if RSUM_DB["Raids"] and RSUM_DB["Raids"][name] then
 				RSUM_DB["Raids"][name] = nil;
 				table.remove(savedraidnames, k);
+				
+				ns.PrintMsg("Saved preset |cff11ddcc" .. name .. "|r deleted.")
 			end
 			RSUM_StandardMode();
 		end

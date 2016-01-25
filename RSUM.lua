@@ -6,7 +6,28 @@ local onload_frame = CreateFrame("Frame", "rsumonload", UIParent);
 local debugframe;
 local debugfontstring;
 
+local addon, ns = ...
 
+ns.font = "Fonts\\FRIZQT__.TTF"
+ns.fontsize = 12
+ns.padding = 12
+ns.buttonsize = 20
+
+-- Options
+ns.CreateOption("keybind_togglewindow", "keybind", "CTRL-O", "Keybind for /rsum", "Click to change")
+ns.CreateOption("masterloot", "checkbox", false, "Masterloot reminder", "Get reminded when you should maybe use master loot or change the master looter")
+ns.CreateOption("noautoreset", "checkbox", true, "No auto reset", "If not checked: Resets all changes when RSUM window is closed")
+ns.CreateOption("printmsg", "checkbox", true, "Print feedback", "Print a response of what has been done")
+ns.CreateOption("sortsavedpresets", "checkbox", false, "Sort saved presets", "Sort saved presets alphabetically")
+ns.CreateOption("sortmembersingroup", "checkbox", false, "members by name", "Sort members alphabetically in each group")
+
+
+
+function ns.PrintMsg(msg)
+	if msg and ns.Option("printmsg") then
+		print("|cffaa0000RSUM:|r " .. msg)
+	end
+end
 
 -- Slash commands
 SLASH_RAIDSETUP1, SLASH_RAIDSETUP2 = '/raidsetup', '/rsum';

@@ -283,6 +283,11 @@ end
 
 RSUM_OnWindowUpdate = function()
 	if window_update then
+		if ns.Option("sortmembersingroup") then
+			for group=1,maxgroups,1 do
+				ns.SortGroupByName(group)
+			end
+		end
 		for group=1,maxgroups,1 do
 			for member = 1,maxmembers,1 do
 				local name = RSUM_GroupMember(group, member);
@@ -633,7 +638,7 @@ function RSUM_OptionsWindowInit()
 		if windowframe then
 			optionsframe = CreateFrame("Frame", "rsumoptionswindow", windowframe);
 			optionsframe:SetPoint("TOPLEFT", windowframe, "TOPRIGHT", sidewindow_offx, sidewindow_offy);
-			optionsframe:SetSize(button_width + gw_padding * 2, 200);
+			optionsframe:SetSize(button_width + gw_padding * 2, 350);
 			local texture = optionsframe:CreateTexture();
 			texture:SetTexture(unpack(sidewindowframetexture));
 			texture:SetAllPoints(texture:GetParent());
@@ -646,73 +651,12 @@ function RSUM_OptionsWindowInit()
 			end
 			fontstring:SetText("Options");
 			
+			local frame = CreateFrame("Frame", "rsumoptionsframe", optionsframe)
+			frame:SetPoint("TOP", fontstring, "BOTTOM", 0, -gw_padding)
+			frame:SetPoint("BOTTOM", 0, 0)
+			frame:SetWidth(optionsframe:GetWidth())
 			
-			local optionfontstring_keybind = optionsframe:CreateFontString("rsumoptionfontstring_keybind");
-			optionfontstring_keybind:SetPoint("TOP", fontstring, "BOTTOM", 0, -gw_padding);
-			optionfontstring_keybind:SetSize(button_width, button_height);
-			if not optionfontstring_keybind:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
-				print("Font not valid");
-			end
-			optionfontstring_keybind:SetText("Keybind for /rsum");
-			
-			
-			local optionbutton_keybind = CreateFrame("Button", "rsumoptionbutton_keybind", optionsframe, "UIPanelButtonTemplate");
-			optionbutton_keybind:SetPoint("TOP", optionfontstring_keybind, "BOTTOM", 0, -gw_padding);
-			optionbutton_keybind:SetSize(button_width, button_height);
-			if RSUM_Options and RSUM_Options["keybind_togglewindow"] then
-				optionbutton_keybind:SetText(RSUM_Options["keybind_togglewindow"]);
-			else
-				optionbutton_keybind:SetText("CTRL+O");
-			end
-			optionbutton_keybind:EnableMouse();
-			optionbutton_keybind:Enable();
-			optionbutton_keybind:SetScript("OnClick", RSUM_OptionButton_Keybind_OnClick);
-			optionbutton_keybind:SetScript("OnKeyUp", RSUM_OptionButton_Keybind_OnKeyUp);
-			optionbutton_keybind:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:SetText("Click to change"); end);
-			optionbutton_keybind:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
-			optionbutton_keybind:EnableKeyboard(false);
-			
-			local optionfontstring_ml = optionsframe:CreateFontString("$PARENT_masterloot");
-			optionfontstring_ml:SetPoint("TOPRIGHT", optionbutton_keybind, "BOTTOMRIGHT", 0, -gw_padding);
-			optionfontstring_ml:SetSize(button_width - button_height, button_height);
-			if not optionfontstring_ml:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
-				print("Font not valid");
-			end
-			optionfontstring_ml:SetText("Masterloot reminder");
-			
-			local optioncheck_ml = CreateFrame("CheckButton", "$PARENT_masterlootcb", optionsframe, "UICheckButtonTemplate");
-			optioncheck_ml:SetPoint("TOPLEFT", optionbutton_keybind, "BOTTOMLEFT", 0, -gw_padding);
-			optioncheck_ml:SetSize(button_height, button_height);
-			if RSUM_Options["masterloot"] then
-				optioncheck_ml:SetChecked(true);
-			else
-				optioncheck_ml:SetChecked(false);
-			end
-			optioncheck_ml:SetScript("OnClick", function(s) RSUM_Options["masterloot"] = s:GetChecked(); end);
-			optioncheck_ml:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Get reminded when you should maybe use master loot or change the master looter"); GameTooltip:Show(); end);
-			optioncheck_ml:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
-			
-			local optionfontstring_autoreset = optionsframe:CreateFontString("$PARENT_autoreset");
-			optionfontstring_autoreset:SetPoint("TOPRIGHT", optionfontstring_ml, "BOTTOMRIGHT", 0, -gw_padding);
-			optionfontstring_ml:SetSize(button_width - button_height, button_height);
-			if not optionfontstring_autoreset:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
-				print("Font not valid");
-			end
-			optionfontstring_autoreset:SetText("Reset all changes when window is closed");
-			
-			local optioncheck_autoreset = CreateFrame("CheckButton", "$PARENT_autoresetcb", optionsframe, "UICheckButtonTemplate");
-			optioncheck_autoreset:SetPoint("TOPLEFT", optioncheck_ml, "BOTTOMLEFT", 0, -gw_padding);
-			optioncheck_autoreset:SetSize(button_height, button_height);
-			if RSUM_Options["noautoreset"] then
-				optioncheck_autoreset:SetChecked(false);
-			else
-				optioncheck_autoreset:SetChecked(true);
-			end
-			optioncheck_autoreset:SetScript("OnClick", function(s) RSUM_Options["masterloot"] = s:GetChecked(); end);
-			optioncheck_autoreset:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine(""); GameTooltip:Show(); end);
-			optioncheck_autoreset:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
-			
-			
+			ns.CreateOptionFrames(frame)
 		end
 	end
 end
