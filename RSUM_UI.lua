@@ -157,7 +157,7 @@ function RSUM_FrameContainsPoint(frame, x, y)
 end
 
 -- search for mouseover frame which is actually overlapped by the dragged frame
-function RSUM_GroupMemberFrameContainsPoint(x, y)
+function ns.gm.MemberFrameContainsPoint(x, y)
 	if RSUM_FrameContainsPoint(windowframe, x, y) then
 		for group=1,maxgroups,1 do
 			if RSUM_FrameContainsPoint(groupframes[group], x, y) then
@@ -190,7 +190,7 @@ function RSUM_ReturnSavedFramePosition()
 	end
 end
 
-function RSUM_GroupMemberFrameAnchoring(group, member)
+function ns.gm.MemberFrameAnchoring(group, member)
 	local f = groupmemberframes[group][member];
 	local p = f:GetParent();
 	local xoff = mw_padding;
@@ -206,7 +206,7 @@ function RSUM_GroupMemberFrameAnchoring(group, member)
 	groupmemberframes[group][member]:SetPoint("CENTER", p, "TOPLEFT", xoff+mw_width/2, -yoff-mw_height/2);
 end
 
-function RSUM_GroupMemberFrameHighlight(frame, enable)
+function ns.gm.MemberFrameHighlight(frame, enable)
 	if enable then
 		frame.background:SetTexture(groupmemberframetexturehighlighted);
 	else
@@ -214,7 +214,7 @@ function RSUM_GroupMemberFrameHighlight(frame, enable)
 	end
 end
 
-function RSUM_GroupMemberFrameEmpty(frame)
+function ns.gm.MemberFrameEmpty(frame)
 	if frame and groupmemberframesempty[frame:GetName()] then
 		return true;
 	end
@@ -234,13 +234,13 @@ function RSUM_UpdateGroupMemberWindow(window, name)
 			color = {["r"] = 0.8, ["g"] = 0.8, ["b"] = 0.8, ["a"] = 0.8};
 			window.roleTexture:Hide();
 		else
-			local class = RSUM_GetMemberClass(name);
+			local class = ns.mm.GetClass(name);
 			if class then
 				color = RAID_CLASS_COLORS[class];
 			else
 				color = {r = 0.8, g = 0.8, b = 0.8, a = 1.0};
 			end
-			local role = RSUM_GetMemberRole(name);
+			local role = ns.mm.GetRole(name);
 			if role and roleTexCoords[role] then
 				window.roleTexture:SetTexCoord(roleTexCoords[role].left, roleTexCoords[role].right, roleTexCoords[role].top, roleTexCoords[role].bottom);
 				window.roleTexture:Show();
@@ -259,7 +259,7 @@ function RSUM_UpdateWindows()
 end
 
 local function RSUM_StatusTextUpdate()
-	local mode, sync, apply, number, combat = RSUM_GetStatus();
+	local mode, sync, apply, number, combat = ns.GetStatus();
 	local firstline, secondline = "", "";
 	
 	if mode == "standard" then
@@ -285,12 +285,12 @@ RSUM_OnWindowUpdate = function()
 	if window_update then
 		if ns.Option("sortmembersingroup") then
 			for group=1,maxgroups,1 do
-				ns.SortGroupByName(group)
+				ns.gm.SortByName(group)
 			end
 		end
 		for group=1,maxgroups,1 do
 			for member = 1,maxmembers,1 do
-				local name = RSUM_GroupMember(group, member);
+				local name = ns.gm.Member(group, member);
 				if name then
 					RSUM_UpdateGroupMemberWindow(groupmemberframes[group][member], name);
 					groupmemberframesempty[groupmemberframes[group][member]:GetName()] = nil;
@@ -320,13 +320,13 @@ function RSUM_SetStandardTexture()
 end
 
 
-function RSUM_GroupMemberFrameDropdown_Initialize(frame, level, menuList)
+function ns.gm.MemberFrameDropdown_Initialize(frame, level, menuList)
 	local group, member = RSUM_GetGroupMemberByFrame(frame:GetParent());
 	if group and member then
 		local info;
 		if level == 1 then
 			info = UIDropDownMenu_CreateInfo();
-			info.text = RSUM_GroupMember(RSUM_GetGroupMemberByFrame(frame:GetParent()));
+			info.text = ns.gm.Member(RSUM_GetGroupMemberByFrame(frame:GetParent()));
 			info.isTitle = true;
 			info.notCheckable = true;
 			UIDropDownMenu_AddButton(info);
@@ -340,7 +340,7 @@ function RSUM_GroupMemberFrameDropdown_Initialize(frame, level, menuList)
 			
 			info = UIDropDownMenu_CreateInfo();
 			info.text = "Remove";
-			info.func = function(s, arg1, arg2, checked) local group, member = RSUM_GetGroupMemberByFrame(arg1:GetParent()); RSUM_RemoveVMemberFromGroup(group, member); RSUM_UpdateWindows(); end;
+			info.func = function(s, arg1, arg2, checked) local group, member = RSUM_GetGroupMemberByFrame(arg1:GetParent()); ns.gm.Remove(group, member); RSUM_UpdateWindows(); end;
 			info.arg1 = frame;
 			info.notCheckable = true;
 			UIDropDownMenu_AddButton(info);
@@ -355,8 +355,9 @@ function RSUM_GroupMemberFrameDropdown_Initialize(frame, level, menuList)
 				info = UIDropDownMenu_CreateInfo();
 				info.text = k;
 				info.arg1 = frame;
+				frame.mm = ns.mm
 				info.arg2 = k;
-				info.func = function(s,arg1,arg2,checked) local group, member = RSUM_GetGroupMemberByFrame(arg1:GetParent()); RSUM_ChangeMemberClass(group, member, arg2); CloseDropDownMenus(); end;
+				info.func = function(s,arg1,arg2,checked) local group, member = RSUM_GetGroupMemberByFrame(arg1:GetParent()); arg1.mm.ChangeClass(group, member, arg2); CloseDropDownMenus(); end;
 				info.notCheckable = true;
 				UIDropDownMenu_AddButton(info, level);
 			end
@@ -506,7 +507,7 @@ function RSUM_Window_Init()
 		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
-		button:SetScript("OnClick", function(s) RSUM_StandardMode(); RSUM_UpdateVGroup(); end);
+		button:SetScript("OnClick", function(s) ns.GoReal(); RSUM_UpdateVGroup(); end);
 		button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Carefull!!!", 1, 0, 0); GameTooltip:AddLine("This will overwrite the virtual groups"); GameTooltip:Show(); end);
 		button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
 		
@@ -521,7 +522,7 @@ function RSUM_Window_Init()
 		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
-		button:SetScript("OnClick", function(s) RSUM_Apply(); RSUM_StandardMode(); end);
+		button:SetScript("OnClick", function(s) RSUM_Apply(); ns.GoReal(); end);
 		button:SetScript("OnEnter", function(s) applyButtonMouseOver = true; GameTooltip:SetOwner(s); GameTooltip:AddLine("Apply Changes to Raid", 1, 0, 0); GameTooltip:AddLine("Can't be done to members in combat"); GameTooltip:Show(); end);
 		button:SetScript("OnLeave", function(s) applyButtonMouseOver = false; GameTooltip:Hide(); end);
 		button:SetScript("OnUpdate", RSUM_ApplyButtonOnUpdate);
@@ -571,7 +572,7 @@ function RSUM_Window_Init()
 			groupmemberframes[group] = {};
 			for member=1,maxmembers,1 do
 				groupmemberframes[group][member] = CreateFrame("Button","rsumgroup" .. group .. "memberwindow" .. member, groupframes[group]);
-				RSUM_GroupMemberFrameAnchoring(group, member);
+				ns.gm.MemberFrameAnchoring(group, member);
 				
 				local texture = groupmemberframes[group][member]:CreateTexture("rsumgroup" .. group .. "memberwindowtexture" .. member);
 				local fontstring = groupmemberframes[group][member]:CreateFontString("rsumgroup" .. group .. "memberwindowstring" .. member);
@@ -613,7 +614,7 @@ function RSUM_Window_Init()
 				groupmemberframes[group][member]:SetScript("OnClick", function(s) if savenloadframe and savenloadframe:IsShown() and not groupmemberframesempty[s:GetName()] then ToggleDropDownMenu(1, nil, s.dropdown, "cursor", 0, 0); end end);
 				
 				groupmemberframes[group][member].dropdown = CreateFrame("Frame", "rsumgroup" .. group .. "memberwindow" .. member .. "dropdown", groupmemberframes[group][member], "UIDropDownMenuTemplate");
-				UIDropDownMenu_Initialize(groupmemberframes[group][member].dropdown, RSUM_GroupMemberFrameDropdown_Initialize);
+				UIDropDownMenu_Initialize(groupmemberframes[group][member].dropdown, ns.gm.MemberFrameDropdown_Initialize);
 				
 			end
 		end
@@ -668,7 +669,7 @@ end
 
 function RSUM_SaveNLoadCreate(name)
 	if name then
-		if RSUM_CreateSavedRaid(name) then
+		if ns.savedraid.Create(name) then
 			RSUM_SaveNLoadSetSelected(name);
 		else
 			print("Failed to create setup " .. name);
@@ -687,7 +688,7 @@ end
 function RSUM_SaveNLoadDelete()
 	local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
 	if name then
-		RSUM_DeleteSavedRaid(name);
+		ns.savedraid.Delete(name);
 		RSUM_SaveNLoadSetSelected();
 	end
 end
@@ -702,7 +703,7 @@ end
 function RSUM_SaveNLoadChangeName(newname)
 	local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
 	if name then
-		RSUM_ChangeSavedRaidName(name, newname);
+		ns.savedraid.ChangeName(name, newname);
 		RSUM_SaveNLoadSetSelected(newname);
 	end
 end
@@ -722,14 +723,14 @@ end
 RSUM_SaveNLoadSave = function(s)
 	local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
 	if name then
-		RSUM_UpdateSavedRaid(name);
+		ns.savedraid.Save(name);
 	end
 end
 
 RSUM_SaveNLoadReload = function(s)
 	local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
 	if name and not (name == "") then
-		RSUM_LoadSavedRaid(name);
+		ns.savedraid.Load(name);
 	end
 end
 
@@ -737,10 +738,10 @@ function RSUM_SaveNLoadDropDown_Menu(frame, level, menuList)
 	local info = UIDropDownMenu_CreateInfo()
 	
 	if level == 1 then
-		local names = RSUM_GetSavedRaidNames();
+		local names = ns.savedraid.Names();
 		if names then
 			for k, v in ipairs(names) do
-				info.text, info.arg1, info.func = v, v, function(s, arg1, arg2, checked) RSUM_LoadSavedRaid(arg1); RSUM_SaveNLoadSetSelected(arg1); end;
+				info.text, info.arg1, info.func = v, v, function(s, arg1, arg2, checked) ns.savedraid.Load(arg1); RSUM_SaveNLoadSetSelected(arg1); end;
 				UIDropDownMenu_AddButton(info);
 			end
 		end
@@ -795,13 +796,13 @@ function RSUM_SaveNLoadImportDropDown(frame, level, menuList)
 		
 	else
 		if menuList == "setup" then
-			local names = RSUM_GetSavedRaidNames();
+			local names = ns.savedraid.Names();
 			if names then
 				for k, v in ipairs(names) do
 					info = UIDropDownMenu_CreateInfo();
 					info.text = v;
 					info.arg1 = v;
-					info.func = function(s,name) RSUM_ImportFromSavedRaid(name); CloseDropDownMenus(); end;
+					info.func = function(s,name) ns.savedraid.Import(name); CloseDropDownMenus(); end;
 					info.notCheckable = true;
 					UIDropDownMenu_AddButton(info, level);
 				end
@@ -816,10 +817,10 @@ function RSUM_SaveNLoadWindowInit()
 			savenloadframe = CreateFrame("Frame", "rsumsavenloadwindow", windowframe);
 			savenloadframe:SetPoint("TOPLEFT", windowframe, "TOPRIGHT", sidewindow_offx, sidewindow_offy);
 			savenloadframe:SetSize(button_width + gw_padding * 2, 200);
-			savenloadframe:SetScript("OnHide", function(s) RSUM_StandardMode(); end);
+			savenloadframe:SetScript("OnHide", function(s) ns.GoReal(); end);
 			savenloadframe:SetScript("OnShow", function(s) if savenloaddropdownmenu then
 								local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
-								if name and not (name == "") then RSUM_LoadSavedRaid(name) end end end);
+								if name and not (name == "") then ns.savedraid.Load(name) end end end);
 			local texture = savenloadframe:CreateTexture();
 			texture:SetTexture(unpack(sidewindowframetexture));
 			texture:SetAllPoints(texture:GetParent());
@@ -885,7 +886,7 @@ function RSUM_SaveNLoadWindowInit()
 			button:SetSize( (savenloadframe:GetWidth() - gw_padding * 2) / 2, button_height);
 			button:SetText("Clear");
 			button:RegisterForClicks("AnyUp");
-			button:SetScript("OnClick", function(s, button) if button == "LeftButton" then RSUM_ClearVGroup(); elseif button == "RightButton" then RSUM_RemoveNonRaidMembers(); end end);
+			button:SetScript("OnClick", function(s, button) if button == "LeftButton" then ns.GoVirtual(); ns.gm.Clear(); RSUM_UpdateWindows(); elseif button == "RightButton" then RSUM_RemoveNonRaidMembers(); end end);
 			button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Left Click: Remove all members from setup."); 
 																			 GameTooltip:AddLine("Right Click: Remove members currently not in the raid."); GameTooltip:Show(); end);
 			button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
@@ -923,7 +924,7 @@ function RSUM_SaveNLoadWindowInit()
 			button:SetText("Add");
 			button:EnableMouse(true);
 			button:RegisterForClicks("LeftButtonUp");
-			button:SetScript("OnClick", function(s) RSUM_CreateMember(newmember_editbox:GetText(), newmember_class); end);
+			button:SetScript("OnClick", function(s) ns.mm.Create(newmember_editbox:GetText(), newmember_class); end);
 			
 			local button = CreateFrame("Button", "rsumsavenloadnewmemberclassbutton", newmemberbox);
 			button:SetPoint("TOPLEFT", 0, -mw_padding - button_height);
@@ -1052,18 +1053,18 @@ RSUM_ApplyButtonOnUpdate = function(s)
 end
 
 RSUM_OnEnter = function(s)
-	if RSUM_GroupMemberFrameEmpty(s) == true then
+	if ns.gm.MemberFrameEmpty(s) == true then
 		return;
 	end
-	RSUM_GroupMemberFrameHighlight(s, true);
+	ns.gm.MemberFrameHighlight(s, true);
 end
 
 RSUM_OnLeave = function(s)
-	RSUM_GroupMemberFrameHighlight(s, false);
+	ns.gm.MemberFrameHighlight(s, false);
 end
 
 RSUM_OnDragStart = function(s, ...)
-	if RSUM_GroupMemberFrameEmpty(s) == true then
+	if ns.gm.MemberFrameEmpty(s) == true then
 		return;
 	end
 	RSUM_SaveFramePosition(s);
@@ -1072,7 +1073,7 @@ RSUM_OnDragStart = function(s, ...)
 end
 
 RSUM_OnDragStop = function(s, ...)
-	if RSUM_GroupMemberFrameEmpty(s) then
+	if ns.gm.MemberFrameEmpty(s) then
 		s:StopMovingOrSizing();
 		RSUM_ReturnSavedFramePosition();
 		return;
@@ -1085,17 +1086,17 @@ RSUM_OnDragStop = function(s, ...)
 	local scale = UIParent:GetEffectiveScale();
 	mousex = mousex / scale;
 	mousey = mousey / scale;
-	local targetgroup, targetmember = RSUM_GroupMemberFrameContainsPoint(mousex, mousey);
+	local targetgroup, targetmember = ns.gm.MemberFrameContainsPoint(mousex, mousey);
 	if targetgroup then
 		local sourcegroup, sourcemember = RSUM_GetGroupMemberByFrame(s)
 		if targetmember then
-			if RSUM_GroupMember(targetgroup, targetmember) == nil then
-				RSUM_MoveVMember(sourcegroup, sourcemember, targetgroup);
+			if ns.gm.Member(targetgroup, targetmember) == nil then
+				ns.gm.Move(sourcegroup, sourcemember, targetgroup);
 			else
-				RSUM_SwapVMember(sourcegroup, sourcemember, targetgroup, targetmember);
+				ns.gm.Swap(sourcegroup, sourcemember, targetgroup, targetmember);
 			end
 		else
-			RSUM_MoveVMember(sourcegroup, sourcemember, targetgroup);
+			ns.gm.Move(sourcegroup, sourcemember, targetgroup);
 		end
 		
 		RSUM_GroupSync(false);

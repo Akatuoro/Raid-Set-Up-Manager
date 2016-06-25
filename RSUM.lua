@@ -67,6 +67,11 @@ local function slashhandler(msg, editbox)
 			RSUM_OptionsWindow();
 			return;
 		end
+		if msg == "sort" then
+			ns.gm.Sort("test")
+			RSUM_UpdateWindows();
+			return;
+		end
 		if not initiated then
 			RSUM_Init();
 		end

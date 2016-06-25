@@ -8,6 +8,10 @@
 
 RSUM_core.lua
 RSUM_options.lua
+RSUM_membermanager.lua
+RSUM_groupmanager.lua
+RSUM_savedraids.lua
 RSUM_vgroups.lua
+RSUM_autosort.lua
 RSUM_ui.lua
 RSUM.lua
