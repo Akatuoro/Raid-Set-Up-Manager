@@ -60,15 +60,15 @@ local sidewindow_offx = 0;
 local sidewindow_offy = -40;
 
 -- visuals (aka textures, maybe fonts):
-local mainwindowframetexture = {0,0,0,0.9};
-local mainwindowframetexturevirtual = {0,0,0.2,0.9};
-local titleregiontexture = 0.1;
-local buttontexture = 0.2;
-local buttontexturehighlighted = 0.4;
-local groupframetexture = 0;
-local groupmemberframetexture = 0.1;
-local groupmemberframetexturehighlighted = 0.4;
-local sidewindowframetexture = {0,0,0,1};
+local mainwindowframecolor = {0,0,0,0.9};
+local mainwindowframevirtualcolor = {0,0,0.2,0.9};
+local titleregioncolor = {0.1,0,0,1};
+local buttoncolor = {0.2,0,0,1};
+local buttoncolorhighlighted = {0.4,0,0,1};
+local groupframecolor = {0,0,0,1};
+local groupmemberframecolor = {0.1,0,0,1};
+local groupmemberframecolorhighlighted = {0.4,0,0,1};
+local sidewindowframecolor = {0,0,0,1};
 local savenloadsymboltexture = "Interface\\AddOns\\RSUM\\Media\\button_savenload.tga";
 local savenloadsymboltexturehighlighted = "Interface\\AddOns\\RSUM\\Media\\button_savenloadhighlighted.tga";
 local savenloadsymboltexturepressed = "Interface\\AddOns\\RSUM\\Media\\button_savenloadpressed.tga";
@@ -208,9 +208,9 @@ end
 
 function ns.gm.MemberFrameHighlight(frame, enable)
 	if enable then
-		frame.background:SetTexture(groupmemberframetexturehighlighted);
+		frame.background:SetColorTexture(unpack(groupmemberframecolorhighlighted));
 	else
-		frame.background:SetTexture(groupmemberframetexture);
+		frame.background:SetColorTexture(unpack(groupmemberframecolor));
 	end
 end
 
@@ -375,6 +375,7 @@ function RSUM_Window_Init()
 
 		mainframe = CreateFrame("Frame", "rsummainframe", UIParent);
 		mainframe:RegisterEvent("GROUP_ROSTER_UPDATE");
+		mainframe:RegisterEvent("CHAT_MSG_SYSTEM");
 		mainframe:SetScript("OnEvent", RSUM_OnEvent);
 		mainframe:SetScript("OnUpdate", RSUM_OnWindowUpdate);
 		mainframe:Show();
@@ -386,18 +387,18 @@ function RSUM_Window_Init()
 		local button = nil;
 		windowframe = CreateFrame("Frame", "rsummainwindow", UIParent);
 		windowframe:SetWidth(gw_padding * 3 + gw_width * 2);
-		windowframe:SetHeight(gw_padding * 5 + gw_height * 4 + button_height + gw_padding + symbolbutton_height + gw_padding);
+		windowframe:SetHeight(gw_padding * 5 + gw_height * 4 + button_height * 2 + gw_padding * 2 + symbolbutton_height + gw_padding);
 		windowframe:SetPoint("CENTER", 0, 0);
 		windowframe:SetFrameStrata("FULLSCREEN");
 		windowframe:SetMovable(true);
 		windowframetexture = windowframe:CreateTexture("rsummainwindowtexture");
 		windowframetexture:SetAllPoints(windowframetexture:GetParent());
-		windowframetexture:SetTexture(unpack(mainwindowframetexture));
+		windowframetexture:SetColorTexture(unpack(mainwindowframecolor));
 		windowframe.texture = windowframetexture;
 		
 		texture = windowframe:CreateTexture("rsummainwindowtexturevirtual");
 		texture:SetAllPoints(texture:GetParent());
-		texture:SetTexture(unpack(mainwindowframetexturevirtual));
+		texture:SetColorTexture(unpack(mainwindowframevirtualcolor));
 		texture:Hide();
 		windowframe.texturevirtual = texture;
 		
@@ -405,7 +406,6 @@ function RSUM_Window_Init()
 		button = CreateFrame("Button", "rsumoptionssymbolbutton", windowframe);
 		button:SetSize(symbolbutton_width, symbolbutton_height);
 		button:SetPoint("TOPRIGHT", -gw_padding, -gw_padding);
-		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonDown");
 		button:SetScript("OnClick", function(s) RSUM_SideWindow("Options"); end);
@@ -413,19 +413,19 @@ function RSUM_Window_Init()
 		button:SetScript("OnLeave", function(s) if not s.down then s.texture:Show(); s.highlighted:Hide(); end end);
 		button:Show();
 		
-		texture = button:CreateTexture("rsumoptionssymbolbuttontexture");
+		texture = button:CreateTexture("rsumoptionssymbolbuttoncolor");
 		texture:SetTexture(optionssymboltexture);
 		texture:SetAllPoints(texture:GetParent());
 		texture:Show();
 		button.texture = texture;
 		
-		texture = button:CreateTexture("rsumoptionssymbolbuttontexturehighlighted");
+		texture = button:CreateTexture("rsumoptionssymbolbuttoncolorhighlighted");
 		texture:SetTexture(optionssymboltexturehighlighted);
 		texture:SetAllPoints(texture:GetParent());
 		texture:Hide();
 		button.highlighted = texture;
 		
-		texture = button:CreateTexture("rsumoptionssymbolbuttontexturepressed");
+		texture = button:CreateTexture("rsumoptionssymbolbuttoncolorpressed");
 		texture:SetTexture(optionssymboltexturepressed);
 		texture:SetAllPoints(texture:GetParent());
 		texture:Hide();
@@ -438,7 +438,6 @@ function RSUM_Window_Init()
 		button = CreateFrame("Button", "rsumsavenloadsymbolbutton", windowframe);
 		button:SetSize(symbolbutton_width, symbolbutton_height);
 		button:SetPoint("TOPRIGHT", -gw_padding * 2 - symbolbutton_width, -gw_padding);
-		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonDown");
 		button:SetScript("OnClick", function(s) RSUM_SideWindow("SaveNLoad"); end);
@@ -446,19 +445,19 @@ function RSUM_Window_Init()
 		button:SetScript("OnLeave", function(s) if not s.down then s.texture:Show(); s.highlighted:Hide(); end end);
 		button:Show();
 		
-		texture = button:CreateTexture("rsumsavenloadsymbolbuttontexture");
+		texture = button:CreateTexture("rsumsavenloadsymbolbuttoncolor");
 		texture:SetTexture(savenloadsymboltexture);
 		texture:SetAllPoints(texture:GetParent());
 		texture:Show();
 		button.texture = texture;
 		
-		texture = button:CreateTexture("rsumsavenloadsymbolbuttontexturehighlighted");
+		texture = button:CreateTexture("rsumsavenloadsymbolbuttoncolorhighlighted");
 		texture:SetTexture(savenloadsymboltexturehighlighted);
 		texture:SetAllPoints(texture:GetParent());
 		texture:Hide();
 		button.highlighted = texture;
 		
-		texture = button:CreateTexture("rsumsavenloadsymbolbuttontexturepressed");
+		texture = button:CreateTexture("rsumsavenloadsymbolbuttoncolorpressed");
 		texture:SetTexture(savenloadsymboltexturepressed);
 		texture:SetAllPoints(texture:GetParent());
 		texture:Hide();
@@ -484,14 +483,60 @@ function RSUM_Window_Init()
 		fontstring:SetText("Initialized");
 		windowframe.status = fontstring;
 		
-		
+		-- raid quicksetup line - raid difficulty etc.
+		local frame = CreateFrame("Frame", "$PARENT_quicksetupline", windowframe);
+		frame:SetPoint("TOPLEFT", gw_padding, -gw_padding*2 - symbolbutton_height);
+		frame:SetPoint("TOPRIGHT", -gw_padding, - gw_padding*2 - symbolbutton_height);
+		frame:SetHeight(button_height);
+
+		local button = CreateFrame("Button", "$PARENT_raidorgroup", frame, "UIGoldBorderButtonTemplate");
+		button:SetSize(button_height, button_height);
+		button:SetText("S");
+		button:SetPoint("TOPLEFT", gw_padding, 0);
+		button:SetScript("OnClick", ns.qs.RaidOrGroupToggle);
+		button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Toggle between Group and Raid");
+												if s:GetText() == "S" then GameTooltip:AddLine("Currently Solo"); end
+												if s:GetText() == "G" then GameTooltip:AddLine("Currently in a Group"); end
+												if s:GetText() == "R" then GameTooltip:AddLine("Currently in a Raid"); end GameTooltip:Show(); end);
+		button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+		ns.qs.raidorgroupbutton = button;
+
+		local button = CreateFrame("Button", "$PARENT_normaldiff", frame, "UIGoldBorderButtonTemplate");
+		button:SetSize(button_height, button_height);
+		button:SetText("N");
+		button:SetPoint("TOPLEFT", ns.qs.raidorgroupbutton, "TOPRIGHT", gw_padding, 0);
+		button:SetScript("OnClick", ns.qs.SetNormalDifficulty);
+		button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Normal Difficulty"); GameTooltip:Show(); end);
+		button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+		ns.qs.normaldiffbutton = button;
+
+		local button = CreateFrame("Button", "$PARENT_heroicdiff", frame, "UIGoldBorderButtonTemplate");
+		button:SetSize(button_height, button_height);
+		button:SetText("H");
+		button:SetPoint("TOPLEFT", ns.qs.normaldiffbutton, "TOPRIGHT", 0, 0);
+		button:SetScript("OnClick", ns.qs.SetHeroicDifficulty);
+		button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Heroic Difficulty"); GameTooltip:Show(); end);
+		button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+		ns.qs.heroicdiffbutton = button;
+
+		local button = CreateFrame("Button", "$PARENT_mythicdiff", frame, "UIGoldBorderButtonTemplate");
+		button:SetSize(button_height, button_height);
+		button:SetText("M");
+		button:SetPoint("TOPLEFT", ns.qs.heroicdiffbutton, "TOPRIGHT", 0, 0);
+		button:SetScript("OnClick", ns.qs.SetMythicDifficulty);
+		button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Mythic Difficulty"); GameTooltip:Show(); end);
+		button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
+		ns.qs.mythicdiffbutton = button;
+
+		ns.qs.Initiate(button);
+		ns.qs.CheckButtons();
+
 		
 		-- buttons:
 		button = CreateFrame("Button", "rsumexitbutton", windowframe, "UIPanelCloseButton");
 		button:SetWidth(exitbutton_width);
 		button:SetHeight(exitbutton_height);
 		button:SetPoint("CENTER", button:GetParent(), "TOPRIGHT", exitbutton_offx, exitbutton_offy);
-		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
 		button:SetScript("OnClick", function(s) windowframe:Hide(); end);
@@ -501,25 +546,21 @@ function RSUM_Window_Init()
 		button:SetHeight(button_height);
 		button:SetPoint("BOTTOMLEFT", button:GetParent(), "BOTTOMLEFT", gw_padding, gw_padding);
 		button:SetPoint("TOPRIGHT", button:GetParent(), "BOTTOMLEFT", gw_padding+button_width, gw_padding+button_height);
-		--button:SetNormalTexture(buttontexture);
-		--button:SetHighlightTexture(buttontexturehighlighted);
+		--button:SetNormalTexture(buttoncolor);
+		--button:SetHighlightTexture(buttoncolorhighlighted);
 		button:SetText("Undo Changes / Reload");
-		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
 		button:SetScript("OnClick", function(s) ns.GoReal(); RSUM_UpdateVGroup(); end);
-		button:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s); GameTooltip:AddLine("Carefull!!!", 1, 0, 0); GameTooltip:AddLine("This will overwrite the virtual groups"); GameTooltip:Show(); end);
-		button:SetScript("OnLeave", function(s) GameTooltip:Hide(); end);
 		
 		button = CreateFrame("Button", "rsumapplybutton", windowframe, "UIPanelButtonTemplate");
 		button:SetWidth(button_width);
 		button:SetHeight(button_height);
 		button:SetPoint("BOTTOMRIGHT", button:GetParent(), "BOTTOMRIGHT", -gw_padding, gw_padding);
 		button:SetPoint("TOPLEFT", button:GetParent(), "BOTTOMRIGHT", -gw_padding-button_width, gw_padding+button_height);
-		--button:SetNormalTexture(buttontexture);
-		--button:SetHighlightTexture(buttontexturehighlighted);
+		--button:SetNormalTexture(buttoncolor);
+		--button:SetHighlightTexture(buttoncolorhighlighted);
 		button:SetText("Apply Changes");
-		button:EnableMouse(true);
 		button:Enable();
 		button:RegisterForClicks("LeftButtonUp");
 		button:SetScript("OnClick", function(s) RSUM_Apply(); ns.GoReal(); end);
@@ -537,9 +578,9 @@ function RSUM_Window_Init()
 		titleregion:SetScript("OnDragStart", function(s) s:GetParent():StartMoving(); end);
 		titleregion:SetScript("OnDragStop", function(s) s:GetParent():StopMovingOrSizing(); end);
 		titleregion:SetScript("OnHide", function(s) s:GetParent():StopMovingOrSizing(); end);
-		texture = windowframe:CreateTexture("rsumtitleregiontexture");
+		texture = windowframe:CreateTexture("rsumtitleregioncolor");
 		texture:SetAllPoints(titleregion);
-		texture:SetTexture(titleregiontexture);
+		texture:SetColorTexture(unpack(titleregioncolor));
 		fontstring = windowframe:CreateFontString("rsumtitleregionfontstring");
 		fontstring:SetAllPoints(titleregion);
 		if not fontstring:SetFont("Fonts\\FRIZQT__.TTF", 12, "") then
@@ -555,7 +596,7 @@ function RSUM_Window_Init()
 			groupframes[group] = CreateFrame("Frame","rsumgroupwindow" .. group, windowframe)
 			groupframes[group]:SetWidth(gw_width);
 			groupframes[group]:SetHeight(gw_height);
-			local y = symbolbutton_height + 2 * gw_padding + floor((group-1) / 2) * (gw_height + gw_padding);
+			local y = symbolbutton_height + button_height + 3 * gw_padding + floor((group-1) / 2) * (gw_height + gw_padding);
 			local x;
 			if floor((group-1) / 2) == (group-1) / 2 then
 				x = gw_padding;
@@ -566,7 +607,7 @@ function RSUM_Window_Init()
 			
 			local texture = groupframes[group]:CreateTexture("rsumgroupmemberwindowtexture" .. group);
 			texture:SetAllPoints(texture:GetParent());
-			texture:SetTexture(groupframetexture);
+			texture:SetColorTexture(unpack(groupframecolor));
 			
 			
 			groupmemberframes[group] = {};
@@ -577,7 +618,7 @@ function RSUM_Window_Init()
 				local texture = groupmemberframes[group][member]:CreateTexture("rsumgroup" .. group .. "memberwindowtexture" .. member);
 				local fontstring = groupmemberframes[group][member]:CreateFontString("rsumgroup" .. group .. "memberwindowstring" .. member);
 				texture:SetAllPoints(texture:GetParent());
-				texture:SetTexture(groupmemberframetexture);
+				texture:SetColorTexture(unpack(groupmemberframecolor));
 				texture:SetDrawLayer("BACKGROUND", 0);
 				groupmemberframes[group][member].background = texture;
 				
@@ -641,7 +682,7 @@ function RSUM_OptionsWindowInit()
 			optionsframe:SetPoint("TOPLEFT", windowframe, "TOPRIGHT", sidewindow_offx, sidewindow_offy);
 			optionsframe:SetSize(button_width + gw_padding * 2, 350);
 			local texture = optionsframe:CreateTexture();
-			texture:SetTexture(unpack(sidewindowframetexture));
+			texture:SetColorTexture(unpack(sidewindowframecolor));
 			texture:SetAllPoints(texture:GetParent());
 			
 			local fontstring = optionsframe:CreateFontString("rsumoptionsheader");
@@ -822,7 +863,7 @@ function RSUM_SaveNLoadWindowInit()
 								local name = UIDropDownMenu_GetText(savenloaddropdownmenu);
 								if name and not (name == "") then ns.savedraid.Load(name) end end end);
 			local texture = savenloadframe:CreateTexture();
-			texture:SetTexture(unpack(sidewindowframetexture));
+			texture:SetColorTexture(unpack(sidewindowframecolor));
 			texture:SetAllPoints(texture:GetParent());
 			
 			local fontstring = savenloadframe:CreateFontString("rsumsavenloadheader");
@@ -922,13 +963,13 @@ function RSUM_SaveNLoadWindowInit()
 			button:SetPoint("TOPRIGHT", 0, -mw_padding - button_height);
 			button:SetSize(50, button_height);
 			button:SetText("Add");
-			button:EnableMouse(true);
-			button:RegisterForClicks("LeftButtonUp");
-			button:SetScript("OnClick", function(s) ns.mm.Create(newmember_editbox:GetText(), newmember_class); end);
+			button:Enable();
+			button:RegisterForClicks("AnyUp");
+			button:SetScript("OnClick", function(s) ns.GoVirtual(); if ns.mm.Create(newmember_editbox:GetText(), newmember_class) then ns.gm.Add(newmember_editbox:GetText(), nil); end RSUM_UpdateWindows(); end);
 			
 			local button = CreateFrame("Button", "rsumsavenloadnewmemberclassbutton", newmemberbox);
 			button:SetPoint("TOPLEFT", 0, -mw_padding - button_height);
-			button:EnableMouse(true);
+			button:Enable();
 			button:RegisterForClicks("AnyDown");
 			button:SetScript("OnClick", function(s) ToggleDropDownMenu(1, nil, s.dropdown, "cursor", 0, 0); end);
 			button:SetSize(button_height, button_height);
@@ -1009,6 +1050,7 @@ function RSUM_SideWindow(name)
 end
 
 RSUM_OptionButton_Keybind_OnClick = function(s, ...)
+	print("clicked");
 	if s:IsKeyboardEnabled() then
 		s:EnableKeyboard(false);
 		return;
@@ -1110,6 +1152,8 @@ end
 RSUM_OnEvent = function(self, event, ...)
 	if event == "GROUP_ROSTER_UPDATE" then
 		RSUM_GroupRosterUpdate();
+	elseif event == "CHAT_MSG_SYSTEM" then
+		ns.qs.CheckButtons();
 	end
 end
 

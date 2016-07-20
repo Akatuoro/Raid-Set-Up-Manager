@@ -109,7 +109,6 @@ local function CreateKeybind(name, default, parent, text, tooltip)
 	else
 		button:SetText(default)
 	end
-	button:EnableMouse()
 	button:Enable()
 	button.name = name
 	button:SetScript("OnClick", Keybind_OnClick)

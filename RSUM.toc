@@ -1,8 +1,8 @@
-## Interface: 60200
+## Interface: 70000
 ## Title: Raid Set Up Manager
 ## Notes: /raidsetup or /rsum
 ## Author: Akatuoro
-## Version: 0.4
+## Version: 0.6
 
 ## SavedVariables: RSUM_Options, RSUM_DB
 
@@ -13,5 +13,6 @@ RSUM_groupmanager.lua
 RSUM_savedraids.lua
 RSUM_vgroups.lua
 RSUM_autosort.lua
+RSUM_quicksetup.lua
 RSUM_ui.lua
 RSUM.lua
